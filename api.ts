@@ -1,7 +1,7 @@
 // API Service for Bình Vương ERP
 // Kết nối với Flask Backend
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'http://222.255.214.187:5000/api';
 
 // Helper function for API calls
 async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {

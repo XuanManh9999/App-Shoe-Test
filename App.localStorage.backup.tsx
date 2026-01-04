@@ -21,7 +21,6 @@ import Login from './components/Login';
 import { ProductionOrder, ReturnLog, OrderStatus, Customer, ProductModel, User, UserRole, ShippingNote, Priority, Payment } from './types';
 import { SAMPLE_ORDER, SAMPLE_CUSTOMER, DEFAULT_USERS, INITIAL_STAGES } from './constants';
 import { generateId } from './utils';
-import { ordersAPI, customersAPI, modelsAPI, shippingAPI, paymentsAPI, returnsAPI, usersAPI } from './api';
 
 const SidebarLink: React.FC<{ to: string; icon: React.ReactNode; label: string; isSubItem?: boolean; badge?: number }> = ({ to, icon, label, isSubItem, badge }) => {
   const location = useLocation();
@@ -31,8 +30,8 @@ const SidebarLink: React.FC<{ to: string; icon: React.ReactNode; label: string; 
     <Link
       to={to}
       className={`flex items-center justify-between px-4 py-3 rounded-2xl transition-all group ${isActive
-        ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
-        : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+          ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
+          : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
         } ${isSubItem ? 'py-2' : ''}`}
     >
       <div className="flex items-center gap-3">
@@ -58,57 +57,51 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [orders, setOrders] = useState<ProductionOrder[]>([]);
-  const [returns, setReturns] = useState<ReturnLog[]>([]);
-  const [shippingNotes, setShippingNotes] = useState<ShippingNote[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [models, setModels] = useState<ProductModel[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [orders, setOrders] = useState<ProductionOrder[]>(() => {
+    const saved = localStorage.getItem('btv_orders');
+    return saved ? JSON.parse(saved) : [SAMPLE_ORDER];
+  });
+
+  const [returns, setReturns] = useState<ReturnLog[]>(() => {
+    const saved = localStorage.getItem('btv_returns');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [shippingNotes, setShippingNotes] = useState<ShippingNote[]>(() => {
+    const saved = localStorage.getItem('btv_shipping');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [payments, setPayments] = useState<Payment[]>(() => {
+    const saved = localStorage.getItem('btv_payments');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    const saved = localStorage.getItem('btv_customers');
+    return saved ? JSON.parse(saved) : [SAMPLE_CUSTOMER];
+  });
+
+  const [models, setModels] = useState<ProductModel[]>(() => {
+    const saved = localStorage.getItem('btv_models');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [users, setUsers] = useState<User[]>(() => {
+    const saved = localStorage.getItem('btv_users');
+    return saved ? JSON.parse(saved) : DEFAULT_USERS;
+  });
 
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [openMenus, setOpenMenus] = useState<string[]>(['production', 'categories']);
 
-  // Load data from API on mount
-  useEffect(() => {
-    const loadData = async () => {
-      if (!currentUser) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        const [ordersData, customersData, modelsData, shippingData, paymentsData, returnsData, usersData] = await Promise.all([
-          ordersAPI.getAll(),
-          customersAPI.getAll(),
-          modelsAPI.getAll(),
-          shippingAPI.getAll(),
-          paymentsAPI.getAll(),
-          returnsAPI.getAll(),
-          usersAPI.getAll()
-        ]);
-
-        setOrders(ordersData || []);
-        setCustomers(customersData || []);
-        setModels(modelsData || []);
-        setShippingNotes(shippingData || []);
-        setPayments(paymentsData || []);
-        setReturns(returnsData || []);
-        setUsers(usersData || []);
-      } catch (error) {
-        console.error('Error loading data from API:', error);
-        alert('Không thể tải dữ liệu từ server. Vui lòng kiểm tra kết nối.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, [currentUser]);
-
-  // Keep user session in localStorage
+  useEffect(() => localStorage.setItem('btv_orders', JSON.stringify(orders)), [orders]);
+  useEffect(() => localStorage.setItem('btv_returns', JSON.stringify(returns)), [returns]);
+  useEffect(() => localStorage.setItem('btv_shipping', JSON.stringify(shippingNotes)), [shippingNotes]);
+  useEffect(() => localStorage.setItem('btv_payments', JSON.stringify(payments)), [payments]);
+  useEffect(() => localStorage.setItem('btv_customers', JSON.stringify(customers)), [customers]);
+  useEffect(() => localStorage.setItem('btv_models', JSON.stringify(models)), [models]);
+  useEffect(() => localStorage.setItem('btv_users', JSON.stringify(users)), [users]);
   useEffect(() => {
     if (currentUser) localStorage.setItem('btv_user', JSON.stringify(currentUser));
     else localStorage.removeItem('btv_user');
@@ -125,267 +118,85 @@ const App: React.FC = () => {
 
   const handleLogout = () => setCurrentUser(null);
 
-  const addOrder = async (newOrder: ProductionOrder) => {
-    try {
-      await ordersAPI.create(newOrder);
-      setOrders(prev => [newOrder, ...prev]);
-    } catch (error) {
-      console.error('Error adding order:', error);
-      alert('Lỗi khi thêm lệnh sản xuất!');
-    }
-  };
-
-  const updateOrder = async (updatedOrder: ProductionOrder) => {
-    try {
-      await ordersAPI.update(updatedOrder.id, updatedOrder);
-      setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
-    } catch (error) {
-      console.error('Error updating order:', error);
-      alert('Lỗi khi cập nhật lệnh sản xuất!');
-    }
-  };
-
-  const deleteOrder = async (id: string) => {
+  const addOrder = (newOrder: ProductionOrder) => setOrders(prev => [newOrder, ...prev]);
+  const updateOrder = (updatedOrder: ProductionOrder) => setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
+  const deleteOrder = (id: string) => {
     if (window.confirm("Xác nhận XÓA VĨNH VIỄN lệnh này?")) {
-      try {
-        await ordersAPI.delete(id);
-        setOrders(prev => prev.filter(o => o.id !== id));
-      } catch (error) {
-        console.error('Error deleting order:', error);
-        alert('Lỗi khi xóa lệnh sản xuất!');
-      }
+      setOrders(prev => prev.filter(o => o.id !== id));
     }
   };
 
-  const addReturn = async (newReturn: ReturnLog) => {
-    try {
-      await returnsAPI.create(newReturn);
-      setReturns(prev => [newReturn, ...prev]);
+  const addReturn = (newReturn: ReturnLog) => {
+    setReturns(prev => [newReturn, ...prev]);
 
-      const originalOrder = orders.find(o => o.id === newReturn.originalOrderId);
-      if (originalOrder) {
-        const remakeOrder: ProductionOrder = {
-          ...originalOrder,
-          id: generateId(),
-          orderCode: `${originalOrder.orderCode}-BÙ`,
-          parentOrderId: originalOrder.id,
-          totalQuantity: newReturn.quantity,
-          priority: Priority.HIGH,
-          priorityReason: `Làm bù cho hàng lỗi: ${newReturn.reason}`,
-          stages: INITIAL_STAGES,
-          details: originalOrder.details.map(d => {
-            if (d.color === newReturn.color) {
-              const newSizes = { ...d.sizes, [`size${newReturn.size}`]: newReturn.quantity };
-              Object.keys(newSizes).forEach(k => {
-                if (k !== `size${newReturn.size}`) (newSizes as any)[k] = 0;
-              });
-              return { ...d, sizes: newSizes, total: newReturn.quantity };
-            }
-            return { ...d, total: 0, sizes: {} as any };
-          }).filter(d => d.total > 0),
-          createdAt: new Date().toISOString()
-        };
-        await ordersAPI.create(remakeOrder);
-        setOrders(prev => [remakeOrder, ...prev]);
-      }
-    } catch (error) {
-      console.error('Error adding return:', error);
-      alert('Lỗi khi thêm trả hàng!');
+    const originalOrder = orders.find(o => o.id === newReturn.originalOrderId);
+    if (originalOrder) {
+      const remakeOrder: ProductionOrder = {
+        ...originalOrder,
+        id: generateId(),
+        orderCode: `${originalOrder.orderCode}-BÙ`,
+        parentOrderId: originalOrder.id,
+        totalQuantity: newReturn.quantity,
+        priority: Priority.HIGH,
+        priorityReason: `Làm bù cho hàng lỗi: ${newReturn.reason}`,
+        stages: INITIAL_STAGES,
+        details: originalOrder.details.map(d => {
+          if (d.color === newReturn.color) {
+            const newSizes = { ...d.sizes, [`size${newReturn.size}`]: newReturn.quantity };
+            Object.keys(newSizes).forEach(k => {
+              if (k !== `size${newReturn.size}`) (newSizes as any)[k] = 0;
+            });
+            return { ...d, sizes: newSizes, total: newReturn.quantity };
+          }
+          return { ...d, total: 0, sizes: {} as any };
+        }).filter(d => d.total > 0),
+        createdAt: new Date().toISOString()
+      };
+      setOrders(prev => [remakeOrder, ...prev]);
     }
   };
 
-  const addShippingNote = async (note: ShippingNote) => {
-    try {
-      await shippingAPI.create(note);
-      setShippingNotes(prev => [note, ...prev]);
-    } catch (error) {
-      console.error('Error adding shipping note:', error);
-      alert('Lỗi khi thêm phiếu giao hàng!');
-    }
-  };
-
-  const updateShippingNote = async (updated: ShippingNote) => {
-    try {
-      await shippingAPI.update(updated.id, updated);
-      setShippingNotes(prev => prev.map(n => n.id === updated.id ? updated : n));
-    } catch (error) {
-      console.error('Error updating shipping note:', error);
-      alert('Lỗi khi cập nhật phiếu giao hàng!');
-    }
-  };
-
-  const deleteShippingNote = async (id: string) => {
+  const addShippingNote = (note: ShippingNote) => setShippingNotes(prev => [note, ...prev]);
+  const updateShippingNote = (updated: ShippingNote) => setShippingNotes(prev => prev.map(n => n.id === updated.id ? updated : n));
+  const deleteShippingNote = (id: string) => {
     if (window.confirm("Xác nhận XÓA phiếu giao hàng này?")) {
-      try {
-        await shippingAPI.delete(id);
-        setShippingNotes(prev => prev.filter(n => n.id !== id));
-      } catch (error) {
-        console.error('Error deleting shipping note:', error);
-        alert('Lỗi khi xóa phiếu giao hàng!');
-      }
+      setShippingNotes(prev => prev.filter(n => n.id !== id));
     }
   };
 
-  const addPayment = async (payment: Payment) => {
-    try {
-      await paymentsAPI.create(payment);
-      setPayments(prev => [payment, ...prev]);
-    } catch (error) {
-      console.error('Error adding payment:', error);
-      alert('Lỗi khi thêm thanh toán!');
-    }
-  };
-
-  const deletePayment = async (id: string) => {
+  const addPayment = (payment: Payment) => setPayments(prev => [payment, ...prev]);
+  const deletePayment = (id: string) => {
     if (window.confirm("Xác nhận XÓA khoản thanh toán này?")) {
-      try {
-        // Note: API doesn't have delete payment endpoint, just remove from state
-        setPayments(prev => prev.filter(p => p.id !== id));
-      } catch (error) {
-        console.error('Error deleting payment:', error);
-        alert('Lỗi khi xóa thanh toán!');
-      }
+      setPayments(prev => prev.filter(p => p.id !== id));
     }
   };
 
-  const addCustomer = async (customer: Customer) => {
-    try {
-      await customersAPI.create(customer);
-      setCustomers(prev => [customer, ...prev]);
-    } catch (error) {
-      console.error('Error adding customer:', error);
-      alert('Lỗi khi thêm khách hàng!');
-    }
-  };
+  const addCustomer = (customer: Customer) => setCustomers(prev => [customer, ...prev]);
+  const updateCustomer = (updated: Customer) => setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c));
+  const addModel = (model: ProductModel) => setModels(prev => [model, ...prev]);
+  const updateModel = (model: ProductModel) => setModels(prev => prev.map(m => m.id === model.id ? model : m));
+  const archiveModel = (id: string) => setModels(prev => prev.map(m => m.id === id ? { ...m, isArchived: true } : m));
+  const restoreModel = (id: string) => setModels(prev => prev.map(m => m.id === id ? { ...m, isArchived: false } : m));
+  // Fix: Corrected TypeScript error where setModels was called twice in a nested callback, returning void instead of ProductModel[]
+  const permanentlyDeleteModel = (id: string) => setModels(prev => prev.filter(m => m.id !== id));
 
-  const updateCustomer = async (updated: Customer) => {
-    try {
-      await customersAPI.update(updated.id, updated);
-      setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c));
-    } catch (error) {
-      console.error('Error updating customer:', error);
-      alert('Lỗi khi cập nhật khách hàng!');
-    }
+  const addUser = (user: User) => setUsers(prev => [user, ...prev]);
+  const updateUser = (updated: User) => {
+    setUsers(prev => prev.map(u => u.id === updated.id ? updated : u));
+    if (currentUser?.id === updated.id) setCurrentUser(updated);
   };
-
-  const addModel = async (model: ProductModel) => {
-    try {
-      await modelsAPI.create(model);
-      setModels(prev => [model, ...prev]);
-    } catch (error) {
-      console.error('Error adding model:', error);
-      alert('Lỗi khi thêm mã hàng!');
-    }
-  };
-
-  const updateModel = async (model: ProductModel) => {
-    try {
-      await modelsAPI.update(model.id, model);
-      setModels(prev => prev.map(m => m.id === model.id ? model : m));
-    } catch (error) {
-      console.error('Error updating model:', error);
-      alert('Lỗi khi cập nhật mã hàng!');
-    }
-  };
-
-  const archiveModel = async (id: string) => {
-    try {
-      const model = models.find(m => m.id === id);
-      if (model) {
-        const updated = { ...model, isArchived: true };
-        await modelsAPI.update(id, updated);
-        setModels(prev => prev.map(m => m.id === id ? updated : m));
-      }
-    } catch (error) {
-      console.error('Error archiving model:', error);
-      alert('Lỗi khi lưu trữ mã hàng!');
-    }
-  };
-
-  const restoreModel = async (id: string) => {
-    try {
-      const model = models.find(m => m.id === id);
-      if (model) {
-        const updated = { ...model, isArchived: false };
-        await modelsAPI.update(id, updated);
-        setModels(prev => prev.map(m => m.id === id ? updated : m));
-      }
-    } catch (error) {
-      console.error('Error restoring model:', error);
-      alert('Lỗi khi khôi phục mã hàng!');
-    }
-  };
-
-  const permanentlyDeleteModel = async (id: string) => {
-    try {
-      await modelsAPI.delete(id);
-      setModels(prev => prev.filter(m => m.id !== id));
-    } catch (error) {
-      console.error('Error deleting model:', error);
-      alert('Lỗi khi xóa mã hàng!');
-    }
-  };
-
-  const addUser = async (user: User) => {
-    try {
-      await usersAPI.create(user);
-      setUsers(prev => [user, ...prev]);
-    } catch (error) {
-      console.error('Error adding user:', error);
-      alert('Lỗi khi thêm người dùng!');
-    }
-  };
-
-  const updateUser = async (updated: User) => {
-    try {
-      await usersAPI.update(updated.id, updated);
-      setUsers(prev => prev.map(u => u.id === updated.id ? updated : u));
-      if (currentUser?.id === updated.id) setCurrentUser(updated);
-    } catch (error) {
-      console.error('Error updating user:', error);
-      alert('Lỗi khi cập nhật người dùng!');
-    }
-  };
-
-  const deleteUser = async (id: string) => {
+  const deleteUser = (id: string) => {
     if (id === currentUser?.id) return alert("Không thể xóa chính mình!");
-    try {
-      await usersAPI.delete(id);
-      setUsers(prev => prev.filter(u => u.id !== id));
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      alert('Lỗi khi xóa người dùng!');
-    }
+    setUsers(prev => prev.filter(u => u.id !== id));
   };
 
-  const reorderOrders = async (newOrders: ProductionOrder[]) => {
-    try {
-      const cancelledOrders = orders.filter(o => o.status === OrderStatus.CANCELLED);
-      const updatedVisible = newOrders.map((order, index) => ({ ...order, sortOrder: index }));
-
-      // Update all orders in API
-      await Promise.all(updatedVisible.map(order => ordersAPI.update(order.id, order)));
-
-      setOrders([...updatedVisible, ...cancelledOrders]);
-    } catch (error) {
-      console.error('Error reordering:', error);
-      alert('Lỗi khi sắp xếp lại thứ tự!');
-    }
+  const reorderOrders = (newOrders: ProductionOrder[]) => {
+    const cancelledOrders = orders.filter(o => o.status === OrderStatus.CANCELLED);
+    const updatedVisible = newOrders.map((order, index) => ({ ...order, sortOrder: index }));
+    setOrders([...updatedVisible, ...cancelledOrders]);
   };
 
   if (!currentUser) return <Login onLogin={handleLogin} />;
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-950">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-white text-lg font-bold">Đang tải dữ liệu từ server...</p>
-          <p className="text-slate-400 text-sm mt-2">Vui lòng đợi...</p>
-        </div>
-      </div>
-    );
-  }
 
   const activeOrders = orders.filter(o => o.status !== OrderStatus.CANCELLED);
   const cancelledOrders = orders.filter(o => o.status === OrderStatus.CANCELLED);

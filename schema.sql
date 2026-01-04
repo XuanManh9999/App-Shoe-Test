@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS customers (
 -- ============================================
 CREATE TABLE IF NOT EXISTS product_models (
     id VARCHAR(36) PRIMARY KEY,
-    itemCode VARCHAR(100) NOT NULL UNIQUE,
+    itemCode VARCHAR(255) NOT NULL UNIQUE,
     productImage LONGTEXT COMMENT 'Base64 hoặc URL ảnh sản phẩm',
     bom JSON NOT NULL COMMENT 'Cấu tạo kỹ thuật: knifeCode, formCode, soleCode, frameCode, heel, accessory, talong, technicalNote',
     gender ENUM('Nữ', 'Nam') NOT NULL,

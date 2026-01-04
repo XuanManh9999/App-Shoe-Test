@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sync Data - Bình Vương ERP</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        .status.info { background: #e3f2fd; color: #1976d2; }
+        .status.success { background: #e8f5e9; color: #388e3c; }
+        .status.error { background: #ffebee; color: #d32f2f; }
+        .status.warning { background: #fff3e0; color: #f57c00; }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 10px;
+            transition: transform 0.2s;
+        }
+        button:hover { transform: translateY(-2px); }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+        .log-item {
+            padding: 5px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .log-item:last-child { border-bottom: none; }
+        .log-item.success { color: #388e3c; }
+        .log-item.error { color: #d32f2f; }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Đồng Bộ Dữ Liệu</h1>
+        <p class="subtitle">Chuyển dữ liệu từ LocalStorage lên MySQL Database</p>
+        
+        <div id="status" class="status info">
+            Sẵn sàng đồng bộ dữ liệu
+        </div>
+
+        <button id="syncBtn" onclick="syncData()">
+            📤 Bắt Đầu Đồng Bộ
+        </button>
+
+        <button onclick="checkData()" style="background: #4caf50;">
+            🔍 Kiểm Tra Dữ Liệu LocalStorage
+        </button>
+
+        <button onclick="clearLocalStorage()" style="background: #f44336;">
+            🗑️ Xóa LocalStorage (Sau khi sync)
+        </button>
+
+        <div id="log" class="log" style="display: none;"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        let logs = [];
+
+        function addLog(message, type = 'info') {
+            logs.push({ message, type, time: new Date().toLocaleTimeString() });
+            updateLogDisplay();
+        }
+
+        function updateLogDisplay() {
+            const logDiv = document.getElementById('log');
+            logDiv.style.display = 'block';
+            logDiv.innerHTML = logs.map(log => 
+                `<div class="log-item ${log.type}">[${log.time}] ${log.message}</div>`
+            ).join('');
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function setStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+        }
+
+        function checkData() {
+            const data = {
+                orders: JSON.parse(localStorage.getItem('btv_orders') || '[]'),
+                customers: JSON.parse(localStorage.getItem('btv_customers') || '[]'),
+                models: JSON.parse(localStorage.getItem('btv_models') || '[]'),
+                shipping: JSON.parse(localStorage.getItem('btv_shipping') || '[]'),
+                payments: JSON.parse(localStorage.getItem('btv_payments') || '[]'),
+                returns: JSON.parse(localStorage.getItem('btv_returns') || '[]'),
+                users: JSON.parse(localStorage.getItem('btv_users') || '[]')
+            };
+
+            addLog(`📊 Dữ liệu trong LocalStorage:`, 'info');
+            addLog(`  - Lệnh sản xuất: ${data.orders.length}`, 'info');
+            addLog(`  - Khách hàng: ${data.customers.length}`, 'info');
+            addLog(`  - Mã hàng: ${data.models.length}`, 'info');
+            addLog(`  - Phiếu giao: ${data.shipping.length}`, 'info');
+            addLog(`  - Thanh toán: ${data.payments.length}`, 'info');
+            addLog(`  - Trả hàng: ${data.returns.length}`, 'info');
+            addLog(`  - Người dùng: ${data.users.length}`, 'info');
+
+            setStatus(`Tìm thấy ${data.orders.length + data.customers.length + data.models.length} mục`, 'info');
+        }
+
+        async function syncData() {
+            const btn = document.getElementById('syncBtn');
+            btn.disabled = true;
+            logs = [];
+            
+            setStatus('Đang đồng bộ...', 'info');
+            addLog('🚀 Bắt đầu đồng bộ dữ liệu...', 'info');
+
+            try {
+                // Load data from localStorage
+                const orders = JSON.parse(localStorage.getItem('btv_orders') || '[]');
+                const customers = JSON.parse(localStorage.getItem('btv_customers') || '[]');
+                const models = JSON.parse(localStorage.getItem('btv_models') || '[]');
+                const shipping = JSON.parse(localStorage.getItem('btv_shipping') || '[]');
+                const payments = JSON.parse(localStorage.getItem('btv_payments') || '[]');
+                const returns = JSON.parse(localStorage.getItem('btv_returns') || '[]');
+                const users = JSON.parse(localStorage.getItem('btv_users') || '[]');
+
+                // Sync Customers
+                addLog(`📤 Đang sync ${customers.length} khách hàng...`, 'info');
+                for (const customer of customers) {
+                    try {
+                        await fetch(`${API_BASE}/customers`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(customer)
+                        });
+                        addLog(`  ✓ ${customer.name}`, 'success');
+                    } catch (e) {
+                        addLog(`  ✗ ${customer.name}: ${e.message}`, 'error');
+                    }
+                }
+
+                // Sync Models
+                addLog(`📤 Đang sync ${models.length} mã hàng...`, 'info');
+                for (const model of models) {
+                    try {
+                        await fetch(`${API_BASE}/models`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(model)
+                        });
+                        addLog(`  ✓ ${model.itemCode}`, 'success');
+                    } catch (e) {
+                        addLog(`  ✗ ${model.itemCode}: ${e.message}`, 'error');
+                    }
+                }
+
+                // Sync Orders
+                addLog(`📤 Đang sync ${orders.length} lệnh sản xuất...`, 'info');
+                for (const order of orders) {
+                    try {
+                        await fetch(`${API_BASE}/orders`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(order)
+                        });
+                        addLog(`  ✓ ${order.orderCode}`, 'success');
+                    } catch (e) {
+                        addLog(`  ✗ ${order.orderCode}: ${e.message}`, 'error');
+                    }
+                }
+
+                // Sync Shipping
+                addLog(`📤 Đang sync ${shipping.length} phiếu giao hàng...`, 'info');
+                for (const note of shipping) {
+                    try {
+                        await fetch(`${API_BASE}/shipping`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(note)
+                        });
+                        addLog(`  ✓ ${note.noteCode}`, 'success');
+                    } catch (e) {
+                        addLog(`  ✗ ${note.noteCode}: ${e.message}`, 'error');
+                    }
+                }
+
+                // Sync Payments
+                addLog(`📤 Đang sync ${payments.length} thanh toán...`, 'info');
+                for (const payment of payments) {
+                    try {
+                        await fetch(`${API_BASE}/payments`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payment)
+                        });
+                        addLog(`  ✓ Thanh toán ${payment.amount}đ`, 'success');
+                    } catch (e) {
+                        addLog(`  ✗ Thanh toán: ${e.message}`, 'error');
+                    }
+                }
+
+                // Sync Returns
+                addLog(`📤 Đang sync ${returns.length} trả hàng...`, 'info');
+                for (const ret of returns) {
+                    try {
+                        await fetch(`${API_BASE}/returns`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(ret)
+                        });
+                        addLog(`  ✓ Trả hàng ${ret.orderCode}`, 'success');
+                    } catch (e) {
+                        addLog(`  ✗ Trả hàng: ${e.message}`, 'error');
+                    }
+                }
+
+                // Sync Users
+                addLog(`📤 Đang sync ${users.length} người dùng...`, 'info');
+                for (const user of users) {
+                    try {
+                        await fetch(`${API_BASE}/users`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(user)
+                        });
+                        addLog(`  ✓ ${user.username}`, 'success');
+                    } catch (e) {
+                        addLog(`  ✗ ${user.username}: ${e.message}`, 'error');
+                    }
+                }
+
+                addLog('✅ Hoàn thành đồng bộ!', 'success');
+                setStatus('✅ Đồng bộ thành công!', 'success');
+            } catch (error) {
+                addLog(`❌ Lỗi: ${error.message}`, 'error');
+                setStatus('❌ Đồng bộ thất bại!', 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function clearLocalStorage() {
+            if (confirm('⚠️ Bạn có chắc muốn xóa tất cả dữ liệu LocalStorage?\n\nChỉ làm điều này SAU KHI đã đồng bộ thành công!')) {
+                localStorage.removeItem('btv_orders');
+                localStorage.removeItem('btv_customers');
+                localStorage.removeItem('btv_models');
+                localStorage.removeItem('btv_shipping');
+                localStorage.removeItem('btv_payments');
+                localStorage.removeItem('btv_returns');
+                localStorage.removeItem('btv_users');
+                
+                addLog('🗑️ Đã xóa LocalStorage', 'warning');
+                setStatus('LocalStorage đã được xóa', 'warning');
+                alert('✅ Đã xóa LocalStorage!\n\nBây giờ ứng dụng sẽ load dữ liệu từ API.');
+            }
+        }
+    </script>
+</body>
+</html>
+

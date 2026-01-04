@@ -5,9 +5,43 @@ from mysql.connector import Error
 import json
 from datetime import datetime
 import os
+import re
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={
+    r"/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["*"],
+        "expose_headers": ["*"],
+        "supports_credentials": False,
+        "max_age": 3600
+    }
+})
+
+# Helper function to convert ISO datetime to MySQL format
+def convert_datetime(dt_string):
+    """Convert ISO 8601 datetime string to MySQL datetime format"""
+    if not dt_string:
+        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    try:
+        # Remove 'Z' and replace 'T' with space
+        dt_string = dt_string.replace('Z', '').replace('T', ' ')
+        # Parse and format
+        dt = datetime.fromisoformat(dt_string)
+        return dt.strftime('%Y-%m-%d %H:%M:%S')
+    except:
+        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+# Add security headers for Chrome's private network access
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', '*')
+    response.headers.add('Access-Control-Allow-Methods', '*')
+    response.headers.add('Access-Control-Allow-Private-Network', 'true')
+    return response
 
 # Database configuration
 DB_CONFIG = {
@@ -100,7 +134,7 @@ def create_order():
             json.dumps(data['bom']), json.dumps(data['details']),
             json.dumps(data['stages']), data['priority'], data.get('priorityReason', ''),
             data['status'], data.get('statusNote', ''), json.dumps(data.get('statusHistory', [])),
-            data.get('sortOrder', 0), data['createdAt'], data.get('parentOrderId')
+            data.get('sortOrder', 0), convert_datetime(data.get('createdAt')), data.get('parentOrderId')
         )
         cursor.execute(query, values)
         conn.commit()
@@ -108,6 +142,8 @@ def create_order():
         conn.close()
         return jsonify({'message': 'Order created successfully', 'id': data['id']}), 201
     except Error as e:
+        print(f"ERROR creating order: {str(e)}")
+        print(f"Data received: {data}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/orders/<order_id>', methods=['PUT'])
@@ -200,7 +236,7 @@ def create_customer():
         values = (
             data['id'], data['name'], data['code'], data.get('contactPerson', ''),
             data.get('phone', ''), data.get('address', ''), data.get('debtDays', 30),
-            data.get('debtLimit', 0), data['createdAt']
+            data.get('debtLimit', 0), convert_datetime(data.get('createdAt'))
         )
         cursor.execute(query, values)
         conn.commit()
@@ -281,8 +317,8 @@ def create_model():
         """
         values = (
             data['id'], data['itemCode'], data['productImage'],
-            json.dumps(data['bom']), data['gender'], data['createdAt'],
-            data.get('updatedAt'), json.dumps(data.get('editHistory', [])),
+            json.dumps(data['bom']), data['gender'], convert_datetime(data.get('createdAt')),
+            convert_datetime(data.get('updatedAt')), json.dumps(data.get('editHistory', [])),
             data.get('isArchived', False), data.get('technicalDocument', '')
         )
         cursor.execute(query, values)
@@ -311,7 +347,7 @@ def update_model(model_id):
         """
         values = (
             data['itemCode'], data['productImage'], json.dumps(data['bom']),
-            data['gender'], data.get('updatedAt'), json.dumps(data.get('editHistory', [])),
+            data['gender'], convert_datetime(data.get('updatedAt')), json.dumps(data.get('editHistory', [])),
             data.get('isArchived', False), data.get('technicalDocument', ''), model_id
         )
         cursor.execute(query, values)
@@ -383,7 +419,7 @@ def create_shipping_note():
             data['id'], data['noteCode'], data['customerId'], data['customerName'],
             data['shippingDate'], json.dumps(data['items']), data['totalAmount'],
             data.get('deposit', 0), data.get('remaining', 0), data.get('note', ''),
-            data['createdAt'], json.dumps(data.get('editHistory', []))
+            convert_datetime(data.get('createdAt')), json.dumps(data.get('editHistory', []))
         )
         cursor.execute(query, values)
         conn.commit()
@@ -434,7 +470,7 @@ def get_payments():
     
     try:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM payments ORDER BY paymentDate DESC")
+        cursor.execute("SELECT * FROM payments ORDER BY date DESC")
         payments = cursor.fetchall()
         cursor.close()
         conn.close()
@@ -451,7 +487,7 @@ def get_payments_by_customer(customer_id):
     
     try:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM payments WHERE customerId=%s ORDER BY paymentDate DESC", (customer_id,))
+        cursor.execute("SELECT * FROM payments WHERE customerId=%s ORDER BY date DESC", (customer_id,))
         payments = cursor.fetchall()
         cursor.close()
         conn.close()
@@ -471,14 +507,13 @@ def create_payment():
         cursor = conn.cursor()
         query = """
             INSERT INTO payments (
-                id, customerId, customerName, shippingNoteId, amount, paymentMethod,
-                paymentDate, note, createdAt
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                id, customerId, amount, date, method, note, createdBy, createdAt
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         values = (
-            data['id'], data['customerId'], data['customerName'],
-            data.get('shippingNoteId'), data['amount'], data['paymentMethod'],
-            data['paymentDate'], data.get('note', ''), data['createdAt']
+            data['id'], data['customerId'], data['amount'],
+            data.get('date', data.get('paymentDate')), data.get('method', data.get('paymentMethod', 'cash')),
+            data.get('note', ''), data.get('createdBy', 'System'), convert_datetime(data.get('createdAt'))
         )
         cursor.execute(query, values)
         conn.commit()
@@ -499,7 +534,7 @@ def get_returns():
     
     try:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM return_logs ORDER BY returnDate DESC")
+        cursor.execute("SELECT * FROM return_logs ORDER BY date DESC")
         returns = cursor.fetchall()
         cursor.close()
         conn.close()
@@ -516,7 +551,7 @@ def get_returns_by_order(order_id):
     
     try:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM return_logs WHERE orderId=%s ORDER BY returnDate DESC", (order_id,))
+        cursor.execute("SELECT * FROM return_logs WHERE originalOrderId=%s ORDER BY date DESC", (order_id,))
         returns = cursor.fetchall()
         cursor.close()
         conn.close()
@@ -536,12 +571,13 @@ def create_return():
         cursor = conn.cursor()
         query = """
             INSERT INTO return_logs (
-                id, orderId, orderCode, returnDate, quantity, reason, note, createdAt
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                id, originalOrderId, color, size, quantity, reason, date
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         values = (
-            data['id'], data['orderId'], data['orderCode'], data['returnDate'],
-            data['quantity'], data['reason'], data.get('note', ''), data['createdAt']
+            data['id'], data.get('originalOrderId', data.get('orderId')),
+            data.get('color', ''), data.get('size', 0),
+            data['quantity'], data['reason'], data.get('date', data.get('returnDate', datetime.now()))
         )
         cursor.execute(query, values)
         conn.commit()
@@ -614,7 +650,7 @@ def create_user():
         """
         values = (
             data['id'], data['username'], data['password'], data['fullName'],
-            data['role'], json.dumps(data['permissions']), data['createdAt']
+            data['role'], json.dumps(data['permissions']), convert_datetime(data.get('createdAt'))
         )
         cursor.execute(query, values)
         conn.commit()
