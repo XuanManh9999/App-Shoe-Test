@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Customer, ProductionOrder, StageStatus, User, ShippingNote, Payment } from '../types';
+import { generateId } from '../utils';
 import { Users, Plus, Phone, MapPin, User as UserIcon, Search, ChevronRight, ClipboardList, TrendingUp, Truck, DollarSign, Package, CreditCard, Calendar, Clock, AlertCircle, Save, X, Trash2 } from 'lucide-react';
 import OrderList from './OrderList';
 
@@ -48,7 +49,7 @@ const CustomerManager: React.FC<Props> = ({ customers, orders, shippingNotes, pa
     } else {
       const customer: Customer = {
         ...newCustomer as Customer,
-        id: crypto.randomUUID(),
+        id: generateId(),
         createdAt: new Date().toISOString()
       };
       onAdd(customer);
@@ -62,7 +63,7 @@ const CustomerManager: React.FC<Props> = ({ customers, orders, shippingNotes, pa
     if (!selectedCustomer) return;
     const payment: Payment = {
       ...paymentData as Payment,
-      id: crypto.randomUUID(),
+      id: generateId(),
       customerId: selectedCustomer.id,
       createdBy: user.fullName
     };

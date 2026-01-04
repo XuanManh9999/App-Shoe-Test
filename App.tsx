@@ -20,6 +20,7 @@ import ShippingManager from './components/ShippingManager';
 import Login from './components/Login';
 import { ProductionOrder, ReturnLog, OrderStatus, Customer, ProductModel, User, UserRole, ShippingNote, Priority, Payment } from './types';
 import { SAMPLE_ORDER, SAMPLE_CUSTOMER, DEFAULT_USERS, INITIAL_STAGES } from './constants';
+import { generateId } from './utils';
 
 const SidebarLink: React.FC<{ to: string; icon: React.ReactNode; label: string; isSubItem?: boolean; badge?: number }> = ({ to, icon, label, isSubItem, badge }) => {
   const location = useLocation();
@@ -133,7 +134,7 @@ const App: React.FC = () => {
     if (originalOrder) {
       const remakeOrder: ProductionOrder = {
         ...originalOrder,
-        id: crypto.randomUUID(),
+        id: generateId(),
         orderCode: `${originalOrder.orderCode}-BÙ`,
         parentOrderId: originalOrder.id,
         totalQuantity: newReturn.quantity,

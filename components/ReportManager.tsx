@@ -182,7 +182,7 @@ const ReportManager: React.FC<Props> = ({ orders, customers, returns }) => {
               </div>
            </div>
            <div className="bg-yellow-400 text-slate-950 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center gap-3 border-2 border-slate-950">
-              <Zap size={18} /> Đang Sẵn Sàng (SS >= 70%): {stats.readyCount} Lệnh
+              <Zap size={18} /> Đang Sẵn Sàng (SS {'>'}= 70%): {stats.readyCount} Lệnh
            </div>
         </div>
 
@@ -299,7 +299,7 @@ const ReportManager: React.FC<Props> = ({ orders, customers, returns }) => {
                     </div>
                     <div>
                        <h4 className="text-3xl font-black text-white uppercase tracking-tighter">Sẵn Sàng Giao (SS)</h4>
-                       <p className="text-blue-400 font-bold uppercase text-[10px] tracking-widest">Tiến độ sản xuất >= 70%</p>
+                       <p className="text-blue-400 font-bold uppercase text-[10px] tracking-widest">Tiến độ sản xuất {'>'}= 70%</p>
                     </div>
                  </div>
                  <div className="grid grid-cols-2 gap-6 pt-6">

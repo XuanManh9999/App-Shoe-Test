@@ -339,6 +339,335 @@ def delete_model(model_id):
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
+# ============ SHIPPING NOTES ============
+
+@app.route('/api/shipping', methods=['GET'])
+def get_shipping_notes():
+    """Get all shipping notes"""
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM shipping_notes ORDER BY createdAt DESC")
+        notes = cursor.fetchall()
+        
+        for note in notes:
+            note['items'] = json.loads(note['items']) if note['items'] else []
+            note['editHistory'] = json.loads(note['editHistory']) if note['editHistory'] else []
+        
+        cursor.close()
+        conn.close()
+        return jsonify(notes)
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/shipping', methods=['POST'])
+def create_shipping_note():
+    """Create a new shipping note"""
+    data = request.json
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    try:
+        cursor = conn.cursor()
+        query = """
+            INSERT INTO shipping_notes (
+                id, noteCode, customerId, customerName, shippingDate, items,
+                totalAmount, deposit, remaining, note, createdAt, editHistory
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        values = (
+            data['id'], data['noteCode'], data['customerId'], data['customerName'],
+            data['shippingDate'], json.dumps(data['items']), data['totalAmount'],
+            data.get('deposit', 0), data.get('remaining', 0), data.get('note', ''),
+            data['createdAt'], json.dumps(data.get('editHistory', []))
+        )
+        cursor.execute(query, values)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'message': 'Shipping note created successfully', 'id': data['id']}), 201
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/shipping/<note_id>', methods=['PUT'])
+def update_shipping_note(note_id):
+    """Update an existing shipping note"""
+    data = request.json
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    try:
+        cursor = conn.cursor()
+        query = """
+            UPDATE shipping_notes SET
+                noteCode=%s, customerId=%s, customerName=%s, shippingDate=%s,
+                items=%s, totalAmount=%s, deposit=%s, remaining=%s, note=%s, editHistory=%s
+            WHERE id=%s
+        """
+        values = (
+            data['noteCode'], data['customerId'], data['customerName'],
+            data['shippingDate'], json.dumps(data['items']), data['totalAmount'],
+            data.get('deposit', 0), data.get('remaining', 0), data.get('note', ''),
+            json.dumps(data.get('editHistory', [])), note_id
+        )
+        cursor.execute(query, values)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'message': 'Shipping note updated successfully'})
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+# ============ PAYMENTS ============
+
+@app.route('/api/payments', methods=['GET'])
+def get_payments():
+    """Get all payments"""
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM payments ORDER BY paymentDate DESC")
+        payments = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(payments)
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/payments/customer/<customer_id>', methods=['GET'])
+def get_payments_by_customer(customer_id):
+    """Get payments for a specific customer"""
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM payments WHERE customerId=%s ORDER BY paymentDate DESC", (customer_id,))
+        payments = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(payments)
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/payments', methods=['POST'])
+def create_payment():
+    """Create a new payment"""
+    data = request.json
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    try:
+        cursor = conn.cursor()
+        query = """
+            INSERT INTO payments (
+                id, customerId, customerName, shippingNoteId, amount, paymentMethod,
+                paymentDate, note, createdAt
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        values = (
+            data['id'], data['customerId'], data['customerName'],
+            data.get('shippingNoteId'), data['amount'], data['paymentMethod'],
+            data['paymentDate'], data.get('note', ''), data['createdAt']
+        )
+        cursor.execute(query, values)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'message': 'Payment created successfully', 'id': data['id']}), 201
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+# ============ RETURN LOGS ============
+
+@app.route('/api/returns', methods=['GET'])
+def get_returns():
+    """Get all return logs"""
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM return_logs ORDER BY returnDate DESC")
+        returns = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(returns)
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/returns/order/<order_id>', methods=['GET'])
+def get_returns_by_order(order_id):
+    """Get return logs for a specific order"""
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM return_logs WHERE orderId=%s ORDER BY returnDate DESC", (order_id,))
+        returns = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(returns)
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/returns', methods=['POST'])
+def create_return():
+    """Create a new return log"""
+    data = request.json
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    try:
+        cursor = conn.cursor()
+        query = """
+            INSERT INTO return_logs (
+                id, orderId, orderCode, returnDate, quantity, reason, note, createdAt
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        values = (
+            data['id'], data['orderId'], data['orderCode'], data['returnDate'],
+            data['quantity'], data['reason'], data.get('note', ''), data['createdAt']
+        )
+        cursor.execute(query, values)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'message': 'Return log created successfully', 'id': data['id']}), 201
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+# ============ USERS ============
+
+@app.route('/api/users/login', methods=['POST'])
+def login():
+    """User login"""
+    data = request.json
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM users WHERE username=%s AND password=%s", 
+                      (data['username'], data['password']))
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if user:
+            user['permissions'] = json.loads(user['permissions']) if user['permissions'] else {}
+            return jsonify(user)
+        else:
+            return jsonify({'error': 'Invalid credentials'}), 401
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/users', methods=['GET'])
+def get_users():
+    """Get all users"""
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM users ORDER BY createdAt DESC")
+        users = cursor.fetchall()
+        
+        for user in users:
+            user['permissions'] = json.loads(user['permissions']) if user['permissions'] else {}
+        
+        cursor.close()
+        conn.close()
+        return jsonify(users)
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/users', methods=['POST'])
+def create_user():
+    """Create a new user"""
+    data = request.json
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    try:
+        cursor = conn.cursor()
+        query = """
+            INSERT INTO users (id, username, password, fullName, role, permissions, createdAt)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        values = (
+            data['id'], data['username'], data['password'], data['fullName'],
+            data['role'], json.dumps(data['permissions']), data['createdAt']
+        )
+        cursor.execute(query, values)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'message': 'User created successfully', 'id': data['id']}), 201
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/users/<user_id>', methods=['PUT'])
+def update_user(user_id):
+    """Update an existing user"""
+    data = request.json
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    try:
+        cursor = conn.cursor()
+        query = """
+            UPDATE users SET
+                username=%s, password=%s, fullName=%s, role=%s, permissions=%s
+            WHERE id=%s
+        """
+        values = (
+            data['username'], data['password'], data['fullName'],
+            data['role'], json.dumps(data['permissions']), user_id
+        )
+        cursor.execute(query, values)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'message': 'User updated successfully'})
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/users/<user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    """Delete a user"""
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Database connection failed'}), 500
+    
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM users WHERE id=%s", (user_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'message': 'User deleted successfully'})
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
 # ============ HEALTH CHECK ============
 
 @app.route('/api/health', methods=['GET'])

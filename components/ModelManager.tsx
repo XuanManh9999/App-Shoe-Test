@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ProductModel, BOM, Gender, EditLog, User, UserRole } from '../types';
+import { generateId } from '../utils';
 import { 
   Box, Plus, Trash2, Image as ImageIcon, X, Search, Scissors, Edit, 
   History, Calendar, AlertCircle, CheckCircle2, ShieldCheck, Clock, 
@@ -150,7 +151,7 @@ const ModelManager: React.FC<Props> = ({ models, onAdd, onUpdate, onDelete, onRe
     } else {
       const model: ProductModel = {
         ...newModel as ProductModel,
-        id: crypto.randomUUID(),
+        id: generateId(),
         technicalDocument: docContent,
         createdAt: new Date().toISOString(),
         isArchived: false,

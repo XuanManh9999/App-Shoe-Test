@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ProductionOrder, StageStatus, ReturnLog, Priority, OrderStatus, Gender, SizeBreakdown, User, UserRole } from '../types';
+import { generateId } from '../utils';
 import { 
   ChevronLeft, Printer, Trash2, RefreshCcw, Scissors, HardDrive, 
   Calendar, AlertTriangle, Zap, Clock, Layers, CheckCircle2, Truck, X, Save
@@ -52,7 +53,7 @@ const OrderDetail: React.FC<Props> = ({ orders, onUpdate, onDelete, onAddReturn,
     e.preventDefault();
     onAddReturn({
       ...returnLog as ReturnLog,
-      id: crypto.randomUUID(),
+      id: generateId(),
       originalOrderId: order.id,
       date: new Date().toISOString()
     });

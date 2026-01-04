@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ProductionOrder, Priority, OrderDetailRow, StageStatus, SizeBreakdown, OrderStatus, Gender, Customer, ProductModel } from '../types';
 import { INITIAL_STAGES } from '../constants';
+import { generateId } from '../utils';
 import { Save, Plus, Trash2, Image as ImageIcon, Upload, ClipboardList, Scissors, Settings, Info, ChevronDown, Palette, ArrowLeft, Search, Box } from 'lucide-react';
 
 interface Props {
@@ -20,7 +21,7 @@ const OrderForm: React.FC<Props> = ({ onSave, orders, customers, models }) => {
   const [modelSearch, setModelSearch] = useState('');
   
   const [formData, setFormData] = useState<Partial<ProductionOrder>>({
-    id: crypto.randomUUID(),
+    id: generateId(),
     orderCode: '',
     itemCode: '',
     customerId: '',
@@ -101,7 +102,7 @@ const OrderForm: React.FC<Props> = ({ onSave, orders, customers, models }) => {
     });
 
     const newDetail: OrderDetailRow = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       color: '',
       lining: '',
       sizes: initialSizes,

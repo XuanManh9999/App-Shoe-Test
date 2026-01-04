@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { ProductionOrder, ShippingNote, OrderStatus, ShippingDetailRow, SizeBreakdown, User, UserRole, Gender, ShippingEditLog } from '../types';
+import { generateId } from '../utils';
 import { 
   Truck, Search, PackageCheck, Calendar, Printer, Plus, X, 
   ArrowRight, FileSpreadsheet, DollarSign, CreditCard, ChevronDown, Save, Eye, Edit, Trash2, History, AlertCircle, Filter, CalendarRange
@@ -325,14 +326,14 @@ const ShippingFormModal = ({ order, editingNote, user, onClose, onSave }: { orde
     }
 
     const editLog: ShippingEditLog | null = editingNote ? {
-      id: crypto.randomUUID(),
+      id: generateId(),
       date: new Date().toISOString(),
       reason: editReason,
       user: user.fullName
     } : null;
 
     const newNote: ShippingNote = {
-      id: editingNote?.id || crypto.randomUUID(),
+      id: editingNote?.id || generateId(),
       orderId: order.id,
       orderCode: order.orderCode,
       customerId: order.customerId,

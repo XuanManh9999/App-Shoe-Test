@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { User, UserRole, UserPermissions } from '../types';
+import { generateId } from '../utils';
 import { Users, Plus, Shield, User as UserIcon, Trash2, Edit, X, Lock, Check, ShieldCheck, UserCheck } from 'lucide-react';
 
 interface Props {
@@ -52,7 +53,7 @@ const UserManager: React.FC<Props> = ({ users, currentUser, onAdd, onUpdate, onD
     } else {
       onAdd({
         ...formData as User,
-        id: crypto.randomUUID(),
+        id: generateId(),
         createdAt: new Date().toISOString()
       });
     }
