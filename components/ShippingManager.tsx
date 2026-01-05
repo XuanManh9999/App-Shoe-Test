@@ -159,10 +159,10 @@ const ShippingManager: React.FC<Props> = ({ orders, shippingNotes, onAdd, onUpda
         <div className="lg:col-span-2 space-y-6">
            <div className="flex flex-col gap-4 px-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Lịch sử xuất hàng gần đây</h3>
+                <h3 className="text-xs md:text-sm font-black uppercase tracking-[0.2em] text-slate-400">Lịch sử xuất hàng gần đây</h3>
                 
                 {/* BỘ LỌC THỜI GIAN */}
-                <div className="flex items-center bg-white p-1 rounded-xl border-2 border-slate-200 shadow-sm overflow-x-auto custom-scrollbar">
+                <div className="flex items-center bg-white p-1.5 md:p-2 rounded-xl border-2 border-slate-200 shadow-sm overflow-x-auto custom-scrollbar gap-1.5">
                   <FilterButton active={timeFilter === 'all'} label="Tất cả" onClick={() => setTimeFilter('all')} />
                   <FilterButton active={timeFilter === 'today'} label="Hôm nay" onClick={() => setTimeFilter('today')} />
                   <FilterButton active={timeFilter === 'yesterday'} label="Hôm qua" onClick={() => setTimeFilter('yesterday')} />
@@ -270,7 +270,7 @@ const ShippingManager: React.FC<Props> = ({ orders, shippingNotes, onAdd, onUpda
 const FilterButton = ({ active, label, onClick, icon }: { active: boolean, label: string, onClick: () => void, icon?: React.ReactNode }) => (
   <button 
     onClick={onClick} 
-    className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${
+    className={`px-3 md:px-4 py-2 md:py-2.5 rounded-lg text-[10px] md:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-1.5 md:gap-2 shrink-0 ${
       active ? 'bg-slate-950 text-white shadow-md' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
     }`}
   >

@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProductionOrder, Priority, StageStatus, OrderStatus, User, UserRole } from '../types';
-import { GripVertical, Eye, Edit, Trash2, Filter, CheckCircle2, Clock, ListFilter, CalendarClock } from 'lucide-react';
+import { GripVertical, Eye, Edit, Trash2, Filter, CheckCircle2, Clock, ListFilter, CalendarClock, Printer } from 'lucide-react';
 
 interface Props {
   orders: ProductionOrder[];
@@ -72,10 +72,10 @@ const OrderList: React.FC<Props> = ({ orders, onReorder, onDelete, title = "Danh
   const canDelete = user.permissions.canDelete;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 md:space-y-8">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="flex-1">
-           <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight">{title}</h2>
+           <h2 className="text-2xl md:text-3xl font-black text-slate-900 uppercase tracking-tight">{title}</h2>
            <div className="flex items-center gap-2 mt-1">
               <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
               <p className="text-slate-500 font-bold text-xs uppercase tracking-widest">{sortedOrders.length} lệnh đang hiển thị</p>
@@ -83,7 +83,7 @@ const OrderList: React.FC<Props> = ({ orders, onReorder, onDelete, title = "Danh
         </div>
 
         {/* BỘ LỌC TÌNH TRẠNG & HẠN GIAO */}
-        <div className="flex items-center bg-white p-1.5 rounded-2xl border-2 border-slate-200 shadow-sm overflow-x-auto custom-scrollbar no-scrollbar">
+        <div className="flex items-center bg-white p-1 md:p-1.5 rounded-xl md:rounded-2xl border-2 border-slate-200 shadow-sm overflow-x-auto custom-scrollbar no-scrollbar">
            <CompletionFilterBtn 
              active={completionFilter === 'all'} 
              label="Tất cả" 
@@ -114,13 +114,101 @@ const OrderList: React.FC<Props> = ({ orders, onReorder, onDelete, title = "Danh
         </div>
 
         {!isArchive && user.role === UserRole.ADMIN && completionFilter === 'all' && (
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-950 rounded-xl text-[10px] font-black text-white uppercase tracking-widest shadow-lg shadow-slate-200">
+          <div className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-slate-950 rounded-xl text-[10px] font-black text-white uppercase tracking-widest shadow-lg shadow-slate-200">
             <GripVertical size={14} className="text-slate-500" /> Kéo thả ưu tiên lệnh
           </div>
         )}
       </div>
 
-      <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {sortedOrders.length === 0 ? (
+          <div className="bg-white p-8 rounded-2xl border-2 border-slate-200 text-center">
+            <p className="text-slate-300 font-black uppercase tracking-widest text-sm">Dữ liệu trống</p>
+          </div>
+        ) : (
+          sortedOrders.map((order, index) => {
+            const ss = isSSReady(order);
+            const progress = getProgress(order);
+            const isDone = progress === 100;
+            const isUrgent = new Date(order.deliveryDate).getTime() < new Date().getTime() + (7 * 86400000) && !isDone;
+            
+            return (
+              <div key={order.id} className="bg-white rounded-2xl border-2 border-slate-200 p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="relative flex-shrink-0">
+                    <img src={order.productImage} className="w-16 h-16 rounded-xl object-cover border-2 border-white shadow-md" alt="" />
+                    {isDone && (
+                      <div className="absolute -top-1 -right-1 bg-emerald-500 text-white rounded-full p-0.5 border-2 border-white shadow-sm">
+                        <CheckCircle2 size={10} strokeWidth={3} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-black text-slate-900 text-sm uppercase tracking-tighter leading-none truncate">{order.orderCode}</p>
+                      {ss && (
+                        <span className="bg-yellow-400 text-slate-950 text-[9px] font-black px-1.5 py-0.5 rounded border border-slate-950 animate-pulse flex-shrink-0">
+                          SS
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs font-black text-slate-500 uppercase truncate mb-1">{order.itemCode}</p>
+                    <p className="text-sm font-black text-slate-700 uppercase tracking-tight truncate">{order.customerName}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className={`text-xs font-black uppercase ${isDone ? 'text-emerald-600' : 'text-slate-900'}`}>{progress}%</span>
+                      {isDone ? (
+                        <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Đã xong</span>
+                      ) : ss && (
+                        <span className="text-[8px] font-black text-yellow-600 uppercase tracking-widest">Sẵn sàng gò</span>
+                      )}
+                    </div>
+                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${isDone ? 'bg-emerald-500' : 'bg-blue-600'}`} style={{ width: `${progress}%` }} />
+                    </div>
+                  </div>
+                  <div className="ml-4 text-right flex-shrink-0">
+                    <p className="text-lg font-black text-blue-600 leading-none">{order.totalQuantity}</p>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">Đôi</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                  <div>
+                    <p className={`text-xs font-black uppercase tracking-tighter ${isUrgent ? 'text-rose-600' : 'text-slate-500'}`}>
+                      Hạn: {new Date(order.deliveryDate).toLocaleDateString('vi-VN')}
+                    </p>
+                    {isUrgent && <span className="text-[8px] font-black text-rose-500 uppercase tracking-widest block mt-0.5">Giao Gấp</span>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => navigate(`/order/${order.id}`)} className="p-2 bg-blue-50 border border-blue-200 text-blue-600 rounded-lg active:bg-blue-100 touch-manipulation" title="Xem chi tiết"><Eye size={16} /></button>
+                    <button 
+                      onClick={() => {
+                        navigate(`/order/${order.id}`);
+                        setTimeout(() => window.print(), 300);
+                      }} 
+                      className="p-2 bg-slate-900 text-white rounded-lg active:bg-slate-800 touch-manipulation" 
+                      title="In phiếu"
+                    >
+                      <Printer size={16} />
+                    </button>
+                    {!isArchive && canEdit && <button onClick={() => navigate(`/edit-order/${order.id}`)} className="p-2 bg-amber-50 border border-amber-200 text-amber-600 rounded-lg active:bg-amber-100 touch-manipulation" title="Chỉnh sửa"><Edit size={16} /></button>}
+                    {canDelete && <button onClick={() => onDelete?.(order.id)} className="p-2 bg-rose-50 border border-rose-200 text-rose-600 rounded-lg active:bg-rose-100 touch-manipulation" title="Xóa"><Trash2 size={16} /></button>}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-white rounded-2xl md:rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -209,9 +297,19 @@ const OrderList: React.FC<Props> = ({ orders, onReorder, onDelete, title = "Danh
                       </td>
                       <td className="px-4 py-6 text-right pr-10">
                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => navigate(`/order/${order.id}`)} className="p-2.5 bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-200 rounded-xl transition-all"><Eye size={18} /></button>
-                          {!isArchive && canEdit && <button onClick={() => navigate(`/edit-order/${order.id}`)} className="p-2.5 bg-white border border-slate-200 text-slate-400 hover:text-amber-600 hover:border-amber-200 rounded-xl transition-all"><Edit size={18} /></button>}
-                          {canDelete && <button onClick={() => onDelete?.(order.id)} className="p-2.5 bg-white border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 rounded-xl transition-all"><Trash2 size={18} /></button>}
+                          <button onClick={() => navigate(`/order/${order.id}`)} className="p-2.5 bg-white border border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-200 rounded-xl transition-all" title="Xem chi tiết"><Eye size={18} /></button>
+                          <button 
+                            onClick={() => {
+                              navigate(`/order/${order.id}`);
+                              setTimeout(() => window.print(), 300);
+                            }} 
+                            className="p-2.5 bg-slate-950 text-white hover:bg-slate-800 rounded-xl transition-all shadow-lg" 
+                            title="In phiếu"
+                          >
+                            <Printer size={18} />
+                          </button>
+                          {!isArchive && canEdit && <button onClick={() => navigate(`/edit-order/${order.id}`)} className="p-2.5 bg-white border border-slate-200 text-slate-400 hover:text-amber-600 hover:border-amber-200 rounded-xl transition-all" title="Chỉnh sửa"><Edit size={18} /></button>}
+                          {canDelete && <button onClick={() => onDelete?.(order.id)} className="p-2.5 bg-white border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 rounded-xl transition-all" title="Xóa"><Trash2 size={18} /></button>}
                         </div>
                       </td>
                     </tr>
@@ -236,16 +334,16 @@ interface FilterBtnProps {
 
 const CompletionFilterBtn: React.FC<FilterBtnProps> = ({ active, label, icon, onClick, color = 'blue' }) => {
   const colorClasses = {
-    blue: active ? 'bg-blue-600 text-white shadow-blue-200' : 'text-slate-400 hover:bg-slate-50 hover:text-blue-600',
-    orange: active ? 'bg-orange-600 text-white shadow-orange-200' : 'text-slate-400 hover:bg-slate-50 hover:text-orange-600',
-    emerald: active ? 'bg-emerald-600 text-white shadow-emerald-200' : 'text-slate-400 hover:bg-slate-50 hover:text-emerald-600',
-    purple: active ? 'bg-purple-600 text-white shadow-purple-200' : 'text-slate-400 hover:bg-slate-50 hover:text-purple-600',
+    blue: active ? 'bg-blue-600 text-white shadow-blue-200' : 'text-slate-400 hover:bg-slate-50 active:bg-slate-100 hover:text-blue-600',
+    orange: active ? 'bg-orange-600 text-white shadow-orange-200' : 'text-slate-400 hover:bg-slate-50 active:bg-slate-100 hover:text-orange-600',
+    emerald: active ? 'bg-emerald-600 text-white shadow-emerald-200' : 'text-slate-400 hover:bg-slate-50 active:bg-slate-100 hover:text-emerald-600',
+    purple: active ? 'bg-purple-600 text-white shadow-purple-200' : 'text-slate-400 hover:bg-slate-50 active:bg-slate-100 hover:text-purple-600',
   };
 
   return (
     <button 
       onClick={onClick}
-      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap ${colorClasses[color]} ${active ? 'shadow-lg scale-105 z-10' : ''}`}
+      className={`touch-manipulation px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap ${colorClasses[color]} ${active ? 'shadow-lg scale-105 z-10' : ''}`}
     >
       {icon}
       {label}

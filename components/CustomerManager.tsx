@@ -1,9 +1,10 @@
 
 import React, { useState, useMemo } from 'react';
-import { Customer, ProductionOrder, StageStatus, User, ShippingNote, Payment } from '../types';
+import { Customer, ProductionOrder, StageStatus, User, ShippingNote, Payment, OrderStatus } from '../types';
 import { generateId } from '../utils';
 import { Users, Plus, Phone, MapPin, User as UserIcon, Search, ChevronRight, ClipboardList, TrendingUp, Truck, DollarSign, Package, CreditCard, Calendar, Clock, AlertCircle, Save, X, Trash2 } from 'lucide-react';
 import OrderList from './OrderList';
+import { ordersAPI } from '../api';
 
 interface Props {
   customers: Customer[];
@@ -14,10 +15,11 @@ interface Props {
   onUpdate: (customer: Customer) => void;
   onAddPayment: (payment: Payment) => void;
   onDeletePayment: (id: string) => void;
+  onReorderOrders?: (newOrders: ProductionOrder[]) => void;
   user: User;
 }
 
-const CustomerManager: React.FC<Props> = ({ customers, orders, shippingNotes, payments, onAdd, onUpdate, onAddPayment, onDeletePayment, user }) => {
+const CustomerManager: React.FC<Props> = ({ customers, orders, shippingNotes, payments, onAdd, onUpdate, onAddPayment, onDeletePayment, onReorderOrders, user }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [activeTab, setActiveTab] = useState<'orders' | 'shipping' | 'debt'>('orders');
@@ -76,6 +78,36 @@ const CustomerManager: React.FC<Props> = ({ customers, orders, shippingNotes, pa
   const customerShipping = shippingNotes.filter(s => s.customerId === selectedCustomer?.id || s.customerName === selectedCustomer?.name);
   const customerPayments = payments.filter(p => p.customerId === selectedCustomer?.id);
 
+  // Handler để reorder orders của customer
+  const handleReorderCustomerOrders = async (newCustomerOrders: ProductionOrder[]) => {
+    if (!selectedCustomer) return;
+    
+    try {
+      // Update sortOrder cho các orders đã reorder
+      const updatedCustomerOrders = newCustomerOrders.map((order, index) => ({ ...order, sortOrder: index }));
+      
+      // Lấy các orders không phải của customer này (cancelled và orders của customers khác)
+      const otherOrders = orders.filter(o => 
+        o.status === OrderStatus.CANCELLED || 
+        (o.customerId !== selectedCustomer.id && o.customerName !== selectedCustomer.name)
+      );
+      
+      // Merge lại: customer orders (đã reorder) + other orders
+      const allUpdatedOrders = [...updatedCustomerOrders, ...otherOrders];
+      
+      // Update tất cả customer orders trong API
+      await Promise.all(updatedCustomerOrders.map(order => ordersAPI.update(order.id, order)));
+      
+      // Gọi callback từ parent nếu có
+      if (onReorderOrders) {
+        onReorderOrders(allUpdatedOrders);
+      }
+    } catch (error) {
+      console.error('Error reordering customer orders:', error);
+      alert('Lỗi khi sắp xếp lại thứ tự lệnh!');
+    }
+  };
+
   // Tính nợ hiện tại
   const totalReceivables = customerShipping.reduce((a, b) => a + b.balanceAmount, 0);
   const totalPaid = customerPayments.reduce((a, b) => a + b.amount, 0);
@@ -104,14 +136,14 @@ const CustomerManager: React.FC<Props> = ({ customers, orders, shippingNotes, pa
   if (selectedCustomer) {
     return (
       <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="flex items-center justify-between">
-          <button onClick={() => setSelectedCustomer(null)} className="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all border-2 border-slate-200 shadow-sm">
-            Quay lại danh sách
-          </button>
-          <div className="flex gap-4">
-            <button onClick={() => { setEditingCustomer(selectedCustomer); setNewCustomer(selectedCustomer); setShowAddForm(true); }} className="px-6 py-2 bg-white text-slate-600 rounded-xl font-black text-xs uppercase border-2 border-slate-200">Sửa hồ sơ</button>
-            <h2 className="text-4xl font-black text-slate-950 uppercase tracking-tighter">Hồ sơ: {selectedCustomer.name}</h2>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <button onClick={() => setSelectedCustomer(null)} className="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all border-2 border-slate-200 shadow-sm shrink-0">
+              Quay lại danh sách
+            </button>
+            <button onClick={() => { setEditingCustomer(selectedCustomer); setNewCustomer(selectedCustomer); setShowAddForm(true); }} className="px-6 py-2 bg-white text-slate-600 rounded-xl font-black text-xs uppercase border-2 border-slate-200 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shrink-0">Sửa hồ sơ</button>
           </div>
+          <h2 className="text-2xl md:text-4xl font-black text-slate-950 uppercase tracking-tighter">Hồ sơ: {selectedCustomer.name}</h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -158,7 +190,7 @@ const CustomerManager: React.FC<Props> = ({ customers, orders, shippingNotes, pa
            </div>
 
            {activeTab === 'orders' ? (
-             <OrderList orders={customerOrders} onReorder={() => {}} title={`Tiến độ sản xuất của ${selectedCustomer.name}`} user={user} />
+             <OrderList orders={customerOrders} onReorder={handleReorderCustomerOrders} title={`Tiến độ sản xuất của ${selectedCustomer.name}`} user={user} />
            ) : activeTab === 'shipping' ? (
              <div className="bg-white rounded-[2.5rem] border-4 border-slate-950 shadow-2xl overflow-hidden">
                 <table className="w-full text-center border-collapse">
@@ -296,6 +328,39 @@ const CustomerManager: React.FC<Props> = ({ customers, orders, shippingNotes, pa
              </form>
           </div>
         )}
+
+        {showAddForm && (
+          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-md z-[100] flex items-center justify-center p-6 overflow-y-auto animate-in fade-in duration-300">
+             <form onSubmit={handleSubmit} className="bg-white w-full max-w-2xl rounded-[3rem] border-[6px] border-slate-950 shadow-2xl overflow-hidden my-auto">
+                <div className="p-10 bg-slate-950 text-white flex justify-between items-center shrink-0">
+                   <h3 className="text-2xl font-black uppercase tracking-tight">{editingCustomer ? 'Sửa hồ sơ khách hàng' : 'Thiết lập hồ sơ khách hàng'}</h3>
+                   <button type="button" onClick={() => { setShowAddForm(false); setEditingCustomer(null); }} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={24}/></button>
+                </div>
+                <div className="p-10 grid grid-cols-1 md:grid-cols-2 gap-8">
+                   <CustomerInput label="Tên khách hàng" placeholder="VD: LA CAMIE" value={newCustomer.name} onChange={v => setNewCustomer(p => ({...p, name: v}))} required />
+                   <CustomerInput label="Mã ký hiệu" placeholder="VD: LC" value={newCustomer.code} onChange={v => setNewCustomer(p => ({...p, code: v}))} required />
+                   <CustomerInput label="Người liên hệ" placeholder="VD: Anh Nam" value={newCustomer.contactPerson} onChange={v => setNewCustomer(p => ({...p, contactPerson: v}))} />
+                   <CustomerInput label="Số điện thoại" placeholder="VD: 09..." value={newCustomer.phone} onChange={v => setNewCustomer(p => ({...p, phone: v}))} />
+                   
+                   {/* Trường mới: Quản lý nợ */}
+                   <div className="bg-blue-50 p-6 rounded-3xl border-2 border-blue-100 md:col-span-2 grid grid-cols-2 gap-6">
+                      <CustomerInput label="Hạn nợ (Số ngày)" type="number" value={String(newCustomer.debtDays)} onChange={v => setNewCustomer(p => ({...p, debtDays: Number(v)}))} required />
+                      <CustomerInput label="Hạn mức nợ (Số tiền)" type="number" value={String(newCustomer.debtLimit)} onChange={v => setNewCustomer(p => ({...p, debtLimit: Number(v)}))} required />
+                      <p className="col-span-2 text-[9px] font-bold text-blue-400 italic">Cấu hình riêng theo đàm phán với khách hàng này.</p>
+                   </div>
+
+                   <div className="md:col-span-2 space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Địa chỉ văn phòng</label>
+                      <textarea value={newCustomer.address} onChange={e => setNewCustomer(p => ({...p, address: e.target.value}))} className="w-full p-4 bg-slate-50 border-4 border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-all font-bold min-h-[100px]" placeholder="Nhập địa chỉ chi tiết..." />
+                   </div>
+                </div>
+                <div className="p-10 bg-slate-50 border-t-4 border-slate-100 flex justify-end gap-4 shrink-0">
+                   <button type="button" onClick={() => { setShowAddForm(false); setEditingCustomer(null); }} className="px-8 py-3 font-black text-xs uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors">Hủy bỏ</button>
+                   <button type="submit" className="px-10 py-4 bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl border-4 border-blue-900 active:scale-95 transition-all hover:bg-blue-600">Lưu thông tin</button>
+                </div>
+             </form>
+          </div>
+        )}
       </div>
     );
   }
@@ -313,9 +378,9 @@ const CustomerManager: React.FC<Props> = ({ customers, orders, shippingNotes, pa
       </div>
 
       {showAddForm && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-in fade-in duration-300">
-           <form onSubmit={handleSubmit} className="bg-white w-full max-w-2xl rounded-[3rem] border-[6px] border-slate-950 shadow-2xl overflow-hidden">
-              <div className="p-10 bg-slate-950 text-white flex justify-between items-center">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-md z-50 flex items-center justify-center p-6 overflow-y-auto animate-in fade-in duration-300">
+           <form onSubmit={handleSubmit} className="bg-white w-full max-w-2xl rounded-[3rem] border-[6px] border-slate-950 shadow-2xl overflow-hidden my-auto">
+              <div className="p-10 bg-slate-950 text-white flex justify-between items-center shrink-0">
                  <h3 className="text-2xl font-black uppercase tracking-tight">{editingCustomer ? 'Sửa hồ sơ khách hàng' : 'Thiết lập hồ sơ khách hàng'}</h3>
                  <button type="button" onClick={() => setShowAddForm(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={24}/></button>
               </div>
@@ -337,9 +402,9 @@ const CustomerManager: React.FC<Props> = ({ customers, orders, shippingNotes, pa
                     <textarea value={newCustomer.address} onChange={e => setNewCustomer(p => ({...p, address: e.target.value}))} className="w-full p-4 bg-slate-50 border-4 border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-all font-bold min-h-[100px]" placeholder="Nhập địa chỉ chi tiết..." />
                  </div>
               </div>
-              <div className="p-10 bg-slate-50 border-t-4 border-slate-100 flex justify-end gap-4">
-                 <button type="button" onClick={() => setShowAddForm(false)} className="px-8 py-3 font-black text-xs uppercase tracking-widest text-slate-400">Hủy bỏ</button>
-                 <button type="submit" className="px-10 py-4 bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl border-4 border-blue-900 active:scale-95 transition-all">Lưu thông tin</button>
+              <div className="p-10 bg-slate-50 border-t-4 border-slate-100 flex justify-end gap-4 shrink-0">
+                 <button type="button" onClick={() => setShowAddForm(false)} className="px-8 py-3 font-black text-xs uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors">Hủy bỏ</button>
+                 <button type="submit" className="px-10 py-4 bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl border-4 border-blue-900 active:scale-95 transition-all hover:bg-blue-600">Lưu thông tin</button>
               </div>
            </form>
         </div>

@@ -4,6 +4,7 @@ import mysql.connector
 from mysql.connector import Error
 import json
 from datetime import datetime
+from email.utils import parsedate_to_datetime
 import os
 import re
 
@@ -33,6 +34,52 @@ def convert_datetime(dt_string):
         return dt.strftime('%Y-%m-%d %H:%M:%S')
     except:
         return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+# Helper function to convert various date formats to MySQL DATE format
+def convert_date(date_string):
+    """Convert various date/datetime string formats to MySQL DATE format (YYYY-MM-DD)"""
+    if not date_string:
+        return datetime.now().strftime('%Y-%m-%d')
+    
+    # If already in YYYY-MM-DD format, return as is
+    if isinstance(date_string, str) and len(date_string) == 10 and date_string.count('-') == 2:
+        try:
+            datetime.strptime(date_string, '%Y-%m-%d')
+            return date_string
+        except:
+            pass
+    
+    try:
+        # Try parsing as RFC 2822 format (e.g., "Sun, 04 Jan 2026 00:00:00 GMT")
+        if isinstance(date_string, str) and ',' in date_string:
+            dt = parsedate_to_datetime(date_string)
+            return dt.strftime('%Y-%m-%d')
+    except:
+        pass
+    
+    try:
+        # Try ISO format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)
+        if 'T' in str(date_string):
+            date_string = str(date_string).split('T')[0]
+        dt = datetime.strptime(str(date_string).split()[0], '%Y-%m-%d')
+        return dt.strftime('%Y-%m-%d')
+    except:
+        pass
+    
+    try:
+        # Try other common formats
+        for fmt in ['%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%d-%m-%Y', '%m-%d-%Y']:
+            try:
+                dt = datetime.strptime(str(date_string).split()[0], fmt)
+                return dt.strftime('%Y-%m-%d')
+            except:
+                continue
+    except:
+        pass
+    
+    # If all parsing fails, return current date
+    print(f"Warning: Could not parse date '{date_string}', using current date")
+    return datetime.now().strftime('%Y-%m-%d')
 
 # Add security headers for Chrome's private network access
 @app.after_request
@@ -129,7 +176,7 @@ def create_order():
         values = (
             data['id'], data['orderCode'], data['itemCode'], data.get('modelId'),
             data['customerId'], data['customerName'], data['gender'],
-            data['totalQuantity'], data['orderDate'], data['deliveryDate'],
+            data['totalQuantity'], convert_date(data.get('orderDate', '')), convert_date(data.get('deliveryDate', '')),
             data['productImage'], data.get('generalNote', ''),
             json.dumps(data['bom']), json.dumps(data['details']),
             json.dumps(data['stages']), data['priority'], data.get('priorityReason', ''),
@@ -165,10 +212,14 @@ def update_order(order_id):
                 statusHistory=%s, sortOrder=%s, parentOrderId=%s
             WHERE id=%s
         """
+        # Convert date strings to DATE format (YYYY-MM-DD)
+        order_date = convert_date(data.get('orderDate', ''))
+        delivery_date = convert_date(data.get('deliveryDate', ''))
+        
         values = (
             data['orderCode'], data['itemCode'], data.get('modelId'),
             data['customerId'], data['customerName'], data['gender'],
-            data['totalQuantity'], data['orderDate'], data['deliveryDate'],
+            data['totalQuantity'], order_date, delivery_date,
             data['productImage'], data.get('generalNote', ''),
             json.dumps(data['bom']), json.dumps(data['details']),
             json.dumps(data['stages']), data['priority'], data.get('priorityReason', ''),
@@ -181,7 +232,23 @@ def update_order(order_id):
         conn.close()
         return jsonify({'message': 'Order updated successfully'})
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"ERROR updating order {order_id}: {str(e)}")
+        print(f"SQL Error Code: {e.errno}")
+        print(f"SQL Error Message: {e.msg}")
+        print(f"Data keys: {list(data.keys()) if data else 'None'}")
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({'error': f'Database error: {str(e)}'}), 500
+    except Exception as e:
+        print(f"ERROR updating order {order_id}: {str(e)}")
+        print(f"Exception type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
+        if conn:
+            conn.rollback()
+            conn.close()
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 @app.route('/api/orders/<order_id>', methods=['DELETE'])
 def delete_order(order_id):

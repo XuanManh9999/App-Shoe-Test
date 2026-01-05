@@ -202,43 +202,43 @@ const OrderForm: React.FC<Props> = ({ onSave, orders, customers, models }) => {
       )}
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 py-4 px-6 bg-white/95 backdrop-blur-md sticky top-0 z-40 rounded-2xl border-2 border-slate-200 shadow-xl">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-            <ArrowLeft size={24} className="text-slate-600" />
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6 py-5 sm:py-6 px-4 sm:px-6 md:px-8 bg-white/95 backdrop-blur-md sticky top-0 z-40 rounded-2xl border-2 border-slate-200 shadow-xl">
+        <div className="flex items-center gap-3 sm:gap-4 w-full md:w-auto">
+          <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 rounded-full transition-colors shrink-0">
+            <ArrowLeft size={20} className="sm:w-6 sm:h-6 text-slate-600" />
           </button>
-          <div>
-            <h2 className="text-2xl font-black text-slate-950 uppercase tracking-tight">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-950 uppercase tracking-tight leading-tight">
               {id ? 'Cập Nhật Lệnh Sản Xuất' : 'Tạo Lệnh Sản Xuất Mới'}
             </h2>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-none">Xưởng Bình Vương • ERP Production</p>
+            <p className="text-[9px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-tight mt-1">Xưởng Bình Vương • ERP Production</p>
           </div>
         </div>
-        <div className="flex gap-3">
-          <button type="button" onClick={() => navigate(-1)} className="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 font-bold text-xs uppercase transition-all">Hủy</button>
-          <button type="submit" form="order-form" className="px-8 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-black shadow-lg shadow-blue-200 flex items-center gap-2 transition-all active:scale-95 text-xs uppercase border-b-4 border-blue-800">
-            <Save size={18} /> Lưu Lệnh Sản Xuất
+        <div className="flex gap-2 sm:gap-3 w-full md:w-auto">
+          <button type="button" onClick={() => navigate(-1)} className="flex-1 md:flex-initial px-4 sm:px-5 py-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 font-bold text-xs uppercase transition-all">Hủy</button>
+          <button type="submit" form="order-form" className="flex-1 md:flex-initial px-6 sm:px-8 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-black shadow-lg shadow-blue-200 flex items-center justify-center gap-2 transition-all active:scale-95 text-xs uppercase border-b-4 border-blue-800">
+            <Save size={18} /> <span className="hidden sm:inline">Lưu Lệnh Sản Xuất</span><span className="sm:hidden">Lưu</span>
           </button>
         </div>
       </div>
 
-      <form id="order-form" onSubmit={handleSubmit} className="space-y-8">
+      <form id="order-form" onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
         {/* Section 1: Thông tin nhận diện */}
-        <section className="bg-white rounded-[2rem] border-2 border-slate-200 shadow-sm overflow-hidden">
-          <div className="bg-slate-50 px-8 py-4 flex items-center justify-between border-b-2 border-slate-100">
-             <div className="flex items-center gap-3">
-                <Info className="text-blue-600" size={20} />
-                <h3 className="text-slate-900 font-black uppercase tracking-widest text-sm">1. Thông tin cơ bản & Thời gian</h3>
+        <section className="bg-white rounded-2xl sm:rounded-[2rem] border-2 border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-slate-50 px-4 sm:px-6 md:px-8 py-4 sm:py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 border-b-2 border-slate-100">
+             <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                <Info className="text-blue-600 shrink-0 w-[18px] h-[18px] sm:w-5 sm:h-5" size={18} />
+                <h3 className="text-slate-900 font-black uppercase tracking-widest text-xs sm:text-sm leading-tight">1. Thông tin cơ bản & Thời gian</h3>
              </div>
              <button 
                 type="button" 
                 onClick={() => setShowModelSelector(true)}
-                className="px-4 py-1.5 bg-slate-950 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-blue-700 transition-all border border-slate-800"
+                className="w-full sm:w-auto px-4 py-2 sm:py-1.5 bg-slate-950 text-white rounded-lg text-[9px] sm:text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-700 transition-all border border-slate-800 shrink-0"
               >
-               <Box size={14} /> Chọn từ danh mục mã hàng
+               <Box size={14} /> <span className="whitespace-nowrap">Chọn từ danh mục mã hàng</span>
              </button>
           </div>
-          <div className="p-8 grid grid-cols-1 md:grid-cols-12 gap-10">
+          <div className="p-4 sm:p-6 md:p-8 grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8 md:gap-10">
             {/* Image Column */}
             <div className="md:col-span-3">
                <div className="flex flex-col gap-3">
@@ -261,7 +261,7 @@ const OrderForm: React.FC<Props> = ({ onSave, orders, customers, models }) => {
             </div>
             
             {/* Fields Column */}
-            <div className="md:col-span-9 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="md:col-span-9 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
               <FormInput label="Mã Lệnh" placeholder="PO-0001" value={formData.orderCode} onChange={(v) => setFormData(prev => ({ ...prev, orderCode: v }))} required color="blue" />
               <FormInput label="Mã Hàng" placeholder="MODEL-XYZ" value={formData.itemCode} onChange={(v) => setFormData(prev => ({ ...prev, itemCode: v }))} required color="blue" />
               
@@ -306,12 +306,12 @@ const OrderForm: React.FC<Props> = ({ onSave, orders, customers, models }) => {
         </section>
 
         {/* Section 2: BOM */}
-        <section className="bg-white rounded-[2rem] border-2 border-slate-200 shadow-sm overflow-hidden">
-          <div className="bg-emerald-50 px-8 py-4 flex items-center gap-3 border-b-2 border-emerald-100">
-             <Scissors className="text-emerald-600" size={20} />
-             <h3 className="text-emerald-900 font-black uppercase tracking-widest text-sm">2. Cấu tạo kỹ thuật & Vật tư (BOM)</h3>
+        <section className="bg-white rounded-2xl sm:rounded-[2rem] border-2 border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-emerald-50 px-4 sm:px-6 md:px-8 py-4 sm:py-5 flex items-center gap-2 sm:gap-3 border-b-2 border-emerald-100">
+             <Scissors className="text-emerald-600 shrink-0 w-[18px] h-[18px] sm:w-5 sm:h-5" size={18} />
+             <h3 className="text-emerald-900 font-black uppercase tracking-widest text-xs sm:text-sm">2. Cấu tạo kỹ thuật & Vật tư (BOM)</h3>
           </div>
-          <div className="p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="p-4 sm:p-6 md:p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
             <FormInput label="Mã Dao Quai" value={formData.bom?.knifeCode} onChange={(v) => updateBOM('knifeCode', v)} color="emerald" />
             <FormInput label="Mã Form" value={formData.bom?.formCode} onChange={(v) => updateBOM('formCode', v)} color="emerald" />
             <FormInput label="Mã Đế" value={formData.bom?.soleCode} onChange={(v) => updateBOM('soleCode', v)} color="emerald" />
@@ -324,27 +324,27 @@ const OrderForm: React.FC<Props> = ({ onSave, orders, customers, models }) => {
         </section>
 
         {/* Section 3: Bảng Size & Số lượng */}
-        <section className="bg-white rounded-[2rem] border-[4px] border-slate-900 shadow-2xl overflow-hidden">
-          <div className="bg-slate-900 px-8 py-6 flex flex-col md:flex-row items-center justify-between gap-4">
-             <div className="flex items-center gap-4">
-                <div className="p-3 bg-yellow-400 text-slate-900 rounded-xl shadow-lg border-2 border-white rotate-2">
-                   <Palette size={24} />
+        <section className="bg-white rounded-2xl sm:rounded-[2rem] border-2 sm:border-[4px] border-slate-900 shadow-2xl overflow-hidden">
+          <div className="bg-slate-900 px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+             <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                <div className="p-2.5 sm:p-3 bg-yellow-400 text-slate-900 rounded-xl shadow-lg border-2 border-white rotate-2 shrink-0">
+                   <Palette size={20} className="sm:w-6 sm:h-6" />
                 </div>
-                <div>
-                   <h3 className="text-xl font-black text-white uppercase tracking-tight">Kế hoạch số lượng theo Màu & Size</h3>
-                   <p className="text-slate-400 font-bold uppercase text-[9px] tracking-[0.2em] mt-1">Phân bổ chi tiết số lượng đôi</p>
+                <div className="min-w-0">
+                   <h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight leading-tight">Kế hoạch số lượng theo Màu & Size</h3>
+                   <p className="text-slate-400 font-bold uppercase text-[8px] sm:text-[9px] tracking-[0.2em] mt-1">Phân bổ chi tiết số lượng đôi</p>
                 </div>
              </div>
              <button 
               type="button" 
               onClick={addDetailRow} 
-              className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-black uppercase tracking-widest flex items-center gap-3 transition-all active:scale-95 border-b-4 border-blue-800 text-xs"
+              className="w-full md:w-auto px-5 sm:px-6 py-2.5 sm:py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-black uppercase tracking-widest flex items-center justify-center gap-2 sm:gap-3 transition-all active:scale-95 border-b-4 border-blue-800 text-xs shrink-0"
             >
               <Plus size={18} /> THÊM PHỐI MÀU
             </button>
           </div>
           
-          <div className="overflow-x-auto bg-slate-50 p-6">
+          <div className="overflow-x-auto bg-slate-50 p-3 sm:p-4 md:p-6 custom-scrollbar">
             <table className="w-full border-separate border-spacing-y-4">
               <thead>
                 <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
@@ -414,21 +414,21 @@ const OrderForm: React.FC<Props> = ({ onSave, orders, customers, models }) => {
             </table>
           </div>
           
-          <div className="p-10 bg-slate-900 text-white flex flex-col md:flex-row items-center justify-between gap-8 border-t-8 border-yellow-400">
-            <div className="flex items-center gap-6">
-               <div className="w-20 h-20 bg-white/10 rounded-2xl flex items-center justify-center font-black text-5xl text-yellow-400 border-2 border-white/20">
+          <div className="p-6 sm:p-8 md:p-10 bg-slate-900 text-white flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8 border-t-4 sm:border-t-8 border-yellow-400">
+            <div className="flex items-center gap-4 sm:gap-6 w-full md:w-auto justify-center md:justify-start">
+               <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/10 rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-4xl sm:text-5xl text-yellow-400 border-2 border-white/20 shrink-0">
                  {formData.gender === Gender.FEMALE ? '♀' : '♂'}
                </div>
-               <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-400">Xác nhận phân loại</p>
-                  <p className="text-3xl font-black tracking-tight uppercase">Dòng hàng {formData.gender === Gender.FEMALE ? 'Nữ' : 'Nam'}</p>
+               <div className="text-center md:text-left">
+                  <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.3em] sm:tracking-[0.4em] text-blue-400">Xác nhận phân loại</p>
+                  <p className="text-2xl sm:text-3xl font-black tracking-tight uppercase">Dòng hàng {formData.gender === Gender.FEMALE ? 'Nữ' : 'Nam'}</p>
                </div>
             </div>
-            <div className="flex items-center gap-10 bg-white/5 px-10 py-6 rounded-3xl border border-white/10 shadow-inner">
-               <span className="text-sm font-black uppercase tracking-[0.3em] text-slate-400">TỔNG TOÀN LỆNH:</span>
-               <div className="flex items-baseline gap-4">
-                  <p className="text-7xl font-black text-yellow-400 tracking-tighter leading-none">{formData.totalQuantity}</p>
-                  <span className="text-xl font-black text-slate-500 uppercase">Đôi</span>
+            <div className="flex items-center gap-4 sm:gap-6 md:gap-10 bg-white/5 px-6 sm:px-8 md:px-10 py-4 sm:py-5 md:py-6 rounded-2xl sm:rounded-3xl border border-white/10 shadow-inner w-full md:w-auto justify-center">
+               <span className="text-xs sm:text-sm font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-slate-400">TỔNG TOÀN LỆNH:</span>
+               <div className="flex items-baseline gap-2 sm:gap-4">
+                  <p className="text-5xl sm:text-6xl md:text-7xl font-black text-yellow-400 tracking-tighter leading-none">{formData.totalQuantity}</p>
+                  <span className="text-lg sm:text-xl font-black text-slate-500 uppercase">Đôi</span>
                </div>
             </div>
           </div>
