@@ -93,9 +93,9 @@ def after_request(response):
 # Database configuration
 DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
-    'user': os.getenv('DB_USER', 'root'),
-    'password': os.getenv('DB_PASSWORD', ''),
-    'database': os.getenv('DB_NAME', 'binh_vuong_erp'),
+    'user': os.getenv('DB_USER', 'db_vuong_erp'),
+    'password': os.getenv('DB_PASSWORD', '7Hse2hJ2T5JP6h23'),
+    'database': os.getenv('DB_NAME', 'db_vuong_erp'),
     'port': int(os.getenv('DB_PORT', 3306))
 }
 
