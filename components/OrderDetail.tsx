@@ -5,7 +5,7 @@ import { ProductionOrder, StageStatus, ReturnLog, Priority, OrderStatus, Gender,
 import { generateId } from '../utils';
 import {
    ChevronLeft, Printer, Trash2, RefreshCcw, Scissors, HardDrive,
-   Calendar, AlertTriangle, Zap, Clock, Layers, CheckCircle2, Truck, X, Save
+   Calendar, AlertTriangle, Zap, Clock, Layers, CheckCircle2, Truck, X, Save, ClipboardList
 } from 'lucide-react';
 
 interface Props {
@@ -163,27 +163,58 @@ const OrderDetail: React.FC<Props> = ({ orders, onUpdate, onDelete, onAddReturn,
 
             {/* Bảng Size */}
             <div className="p-4 sm:p-8 md:p-12 bg-white border-t-[4px] sm:border-t-[6px] border-slate-950 print:p-5 print:border-t-2">
+               <h3 className="text-xl sm:text-2xl font-black uppercase mb-4 sm:mb-6 print:text-lg print:mb-3 print:block">Phân bố chi tiết số lượng đơn</h3>
                <div className="overflow-x-auto rounded-xl sm:rounded-2xl border-2 sm:border-4 border-slate-950 overflow-hidden print:rounded-lg print:border-2 print:overflow-visible custom-scrollbar">
-                  <table className="w-full text-center border-collapse print:text-sm print:table-auto min-w-[600px]">
-                     <thead>
+                  <table className="w-full text-center border-collapse print:text-sm print:table-auto min-w-[600px] print:w-full print:border-collapse">
+                     <thead className="print:table-header-group">
                         <tr className="bg-slate-950 text-white font-black text-[10px] sm:text-xs uppercase print:text-[10px] print:bg-slate-950">
-                           <th className="p-3 sm:p-4 md:p-6 text-left print:p-3 print:text-left sticky left-0 bg-slate-950 z-10">Phối màu</th>
-                           {activeSizeRange.map(s => <th key={s} className="p-3 sm:p-4 md:p-6 print:p-3">{s}</th>)}
-                           <th className="p-3 sm:p-4 md:p-6 bg-blue-700 print:p-3 print:bg-blue-700">Tổng</th>
+                           <th className="p-3 sm:p-4 md:p-6 text-left print:p-2 print:text-left sticky left-0 bg-slate-950 z-10 print:static print:bg-slate-950">Phối màu</th>
+                           {activeSizeRange.map(s => <th key={s} className="p-3 sm:p-4 md:p-6 print:p-2">{s}</th>)}
+                           <th className="p-3 sm:p-4 md:p-6 bg-blue-700 print:p-2 print:bg-blue-700">Tổng</th>
                         </tr>
                      </thead>
-                     <tbody className="divide-y-2 sm:divide-y-4 divide-slate-100 font-black text-slate-950 print:divide-y-2">
-                        {order.details.map((row) => (
-                           <tr key={row.id} className="print:border-b print:border-slate-200">
-                              <td className="p-3 sm:p-4 md:p-6 text-left border-r-2 border-slate-100 print:p-3 print:text-left print:border-r print:border-slate-200 sticky left-0 bg-white z-10"><p className="text-sm sm:text-base md:text-lg uppercase print:text-base">{row.color}</p></td>
-                              {activeSizeRange.map(s => <td key={s} className="p-3 sm:p-4 md:p-6 border-r-2 border-slate-100 text-base sm:text-lg md:text-xl print:p-3 print:text-base print:border-r print:border-slate-200">{row.sizes[`size${s}` as keyof SizeBreakdown] || '-'}</td>)}
-                              <td className="p-3 sm:p-4 md:p-6 bg-slate-50 text-xl sm:text-2xl md:text-3xl text-blue-700 border-l-2 sm:border-l-4 border-slate-950 print:p-3 print:text-xl print:border-l-2 print:bg-slate-50">{row.total}</td>
+                     <tbody className="divide-y-2 sm:divide-y-4 divide-slate-100 font-black text-slate-950 print:divide-y-0 print:table-row-group">
+                        {order.details && order.details.length > 0 ? (
+                           order.details.map((row, index) => (
+                              <tr key={row.id || index} className="print:border-b print:border-slate-200 print:table-row">
+                                 <td className="p-3 sm:p-4 md:p-6 text-left border-r-2 border-slate-100 print:p-2 print:text-left print:border-r print:border-slate-200 sticky left-0 bg-white z-10 print:static print:bg-white">
+                                    <p className="text-sm sm:text-base md:text-lg uppercase print:text-sm font-black">{row.color || '---'}</p>
+                                    {row.lining && <p className="text-xs text-slate-400 print:text-[10px] print:mt-1">{row.lining}</p>}
+                                 </td>
+                                 {activeSizeRange.map(s => (
+                                    <td key={s} className="p-3 sm:p-4 md:p-6 border-r-2 border-slate-100 text-base sm:text-lg md:text-xl print:p-2 print:text-base print:border-r print:border-slate-200 print:tabular-nums">
+                                       {row.sizes[`size${s}` as keyof SizeBreakdown] || '-'}
+                                    </td>
+                                 ))}
+                                 <td className="p-3 sm:p-4 md:p-6 bg-slate-50 text-xl sm:text-2xl md:text-3xl text-blue-700 border-l-2 sm:border-l-4 border-slate-950 print:p-2 print:text-lg print:border-l-2 print:bg-slate-50 print:tabular-nums font-black">
+                                    {row.total || 0}
+                                 </td>
+                              </tr>
+                           ))
+                        ) : (
+                           <tr>
+                              <td colSpan={activeSizeRange.length + 2} className="p-8 text-center text-slate-400 font-bold uppercase">Chưa có dữ liệu</td>
                            </tr>
-                        ))}
+                        )}
                      </tbody>
                   </table>
                </div>
             </div>
+
+            {/* Ghi chú chung */}
+            {order.generalNote && (
+               <div className="p-4 sm:p-8 md:p-12 bg-white border-t-[4px] sm:border-t-[6px] border-slate-950 print:p-5 print:border-t-2 print:page-break-inside-avoid">
+                  <h3 className="text-xl sm:text-2xl font-black uppercase mb-4 sm:mb-6 print:text-lg print:mb-3 flex items-center gap-3">
+                     <ClipboardList size={24} className="text-blue-600 print:w-5 print:h-5" /> 
+                     Ghi chú chung lệnh sản xuất
+                  </h3>
+                  <div className="bg-slate-50 border-2 border-slate-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 print:rounded-lg print:p-4 print:border print:bg-white">
+                     <div className="text-sm sm:text-base font-medium text-slate-900 whitespace-pre-wrap print:text-sm print:leading-relaxed">
+                        {order.generalNote}
+                     </div>
+                  </div>
+               </div>
+            )}
          </div>
 
          {/* MODAL BÁO LỖI */}

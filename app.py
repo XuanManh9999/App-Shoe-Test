@@ -457,8 +457,18 @@ def get_shipping_notes():
         notes = cursor.fetchall()
         
         for note in notes:
-            note['items'] = json.loads(note['items']) if note['items'] else []
-            note['editHistory'] = json.loads(note['editHistory']) if note['editHistory'] else []
+            # Convert JSON fields
+            note['details'] = json.loads(note['details']) if note.get('details') else []
+            note['editHistory'] = json.loads(note['editHistory']) if note.get('editHistory') else []
+            # Convert date fields to ISO format
+            if note.get('shippingDate'):
+                note['shippingDate'] = note['shippingDate'].isoformat() if hasattr(note['shippingDate'], 'isoformat') else str(note['shippingDate'])
+            if note.get('depositDate'):
+                note['depositDate'] = note['depositDate'].isoformat() if hasattr(note['depositDate'], 'isoformat') else str(note['depositDate'])
+            if note.get('createdAt'):
+                note['createdAt'] = note['createdAt'].isoformat() if hasattr(note['createdAt'], 'isoformat') else str(note['createdAt'])
+            if note.get('updatedAt'):
+                note['updatedAt'] = note['updatedAt'].isoformat() if hasattr(note['updatedAt'], 'isoformat') else str(note['updatedAt'])
         
         cursor.close()
         conn.close()
@@ -478,15 +488,30 @@ def create_shipping_note():
         cursor = conn.cursor()
         query = """
             INSERT INTO shipping_notes (
-                id, noteCode, customerId, customerName, shippingDate, items,
-                totalAmount, deposit, remaining, note, createdAt, editHistory
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                id, orderId, orderCode, customerId, customerName, itemCode, shippingDate,
+                productImage, details, totalQuantity, totalAmount, depositAmount,
+                balanceAmount, depositDate, note, createdAt, updatedAt, editHistory
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         values = (
-            data['id'], data['noteCode'], data['customerId'], data['customerName'],
-            data['shippingDate'], json.dumps(data['items']), data['totalAmount'],
-            data.get('deposit', 0), data.get('remaining', 0), data.get('note', ''),
-            convert_datetime(data.get('createdAt')), json.dumps(data.get('editHistory', []))
+            data['id'], 
+            data.get('orderId', ''),
+            data.get('orderCode', ''),
+            data['customerId'], 
+            data['customerName'],
+            data.get('itemCode', ''),
+            convert_date(data.get('shippingDate', '')),
+            data.get('productImage', ''),
+            json.dumps(data.get('details', [])), 
+            data.get('totalQuantity', 0),
+            data.get('totalAmount', 0),
+            data.get('depositAmount', 0),
+            data.get('balanceAmount', 0),
+            convert_date(data.get('depositDate', '')) if data.get('depositDate') else None,
+            data.get('note', ''),
+            convert_datetime(data.get('createdAt')),
+            convert_datetime(data.get('updatedAt')) if data.get('updatedAt') else None,
+            json.dumps(data.get('editHistory', []))
         )
         cursor.execute(query, values)
         conn.commit()
@@ -494,6 +519,10 @@ def create_shipping_note():
         conn.close()
         return jsonify({'message': 'Shipping note created successfully', 'id': data['id']}), 201
     except Error as e:
+        print(f"ERROR creating shipping note: {str(e)}")
+        print(f"Data received: {data}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/shipping/<note_id>', methods=['PUT'])
@@ -508,15 +537,30 @@ def update_shipping_note(note_id):
         cursor = conn.cursor()
         query = """
             UPDATE shipping_notes SET
-                noteCode=%s, customerId=%s, customerName=%s, shippingDate=%s,
-                items=%s, totalAmount=%s, deposit=%s, remaining=%s, note=%s, editHistory=%s
+                orderId=%s, orderCode=%s, customerId=%s, customerName=%s, itemCode=%s,
+                shippingDate=%s, productImage=%s, details=%s, totalQuantity=%s,
+                totalAmount=%s, depositAmount=%s, balanceAmount=%s, depositDate=%s,
+                note=%s, updatedAt=%s, editHistory=%s
             WHERE id=%s
         """
         values = (
-            data['noteCode'], data['customerId'], data['customerName'],
-            data['shippingDate'], json.dumps(data['items']), data['totalAmount'],
-            data.get('deposit', 0), data.get('remaining', 0), data.get('note', ''),
-            json.dumps(data.get('editHistory', [])), note_id
+            data.get('orderId', ''),
+            data.get('orderCode', ''),
+            data['customerId'], 
+            data['customerName'],
+            data.get('itemCode', ''),
+            convert_date(data.get('shippingDate', '')),
+            data.get('productImage', ''),
+            json.dumps(data.get('details', [])),
+            data.get('totalQuantity', 0),
+            data.get('totalAmount', 0),
+            data.get('depositAmount', 0),
+            data.get('balanceAmount', 0),
+            convert_date(data.get('depositDate', '')) if data.get('depositDate') else None,
+            data.get('note', ''),
+            convert_datetime(data.get('updatedAt')) if data.get('updatedAt') else None,
+            json.dumps(data.get('editHistory', [])),
+            note_id
         )
         cursor.execute(query, values)
         conn.commit()
@@ -524,6 +568,10 @@ def update_shipping_note(note_id):
         conn.close()
         return jsonify({'message': 'Shipping note updated successfully'})
     except Error as e:
+        print(f"ERROR updating shipping note {note_id}: {str(e)}")
+        print(f"Data received: {data}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 # ============ PAYMENTS ============

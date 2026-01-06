@@ -104,8 +104,46 @@ body {
     border: 1px solid #000 !important;
   }
 
+  /* Đảm bảo bảng và nội dung không bị cắt */
+  table {
+    page-break-inside: auto !important;
+    border-collapse: collapse !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tbody {
+    display: table-row-group !important;
+  }
+
+  tfoot {
+    display: table-footer-group !important;
+  }
+
+  /* Đảm bảo tất cả các dòng trong bảng đều hiển thị */
+  tr {
+    page-break-inside: auto !important;
+    page-break-after: auto !important;
+    display: table-row !important;
+  }
+
+  /* Không ẩn bất kỳ dòng nào */
+  tbody tr {
+    display: table-row !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  /* Đảm bảo các section không bị cắt */
+  .print\\:page-break-inside-avoid {
+    page-break-inside: avoid !important;
+  }
+
   @page {
     margin: 1cm;
+    size: A4;
   }
 }
 
