@@ -13,19 +13,19 @@ interface Props {
    onUpdate: (order: ProductionOrder) => void;
    onDelete?: (id: string) => void;
    onAddReturn: (ret: ReturnLog) => void;
+   onAddReturns?: (rets: ReturnLog[]) => void;
    user: User;
 }
 
-const OrderDetail: React.FC<Props> = ({ orders, onUpdate, onDelete, onAddReturn, user }) => {
+const OrderDetail: React.FC<Props> = ({ orders, onUpdate, onDelete, onAddReturn, onAddReturns, user }) => {
    const { id } = useParams();
    const navigate = useNavigate();
    const [showReturnForm, setShowReturnForm] = useState(false);
    const [returnLog, setReturnLog] = useState<Partial<ReturnLog>>({
       color: '',
-      size: 37,
-      quantity: 1,
       reason: ''
    });
+   const [returnSizes, setReturnSizes] = useState<Record<number, number>>({});
 
    const order = orders.find(o => o.id === id);
    if (!order) return <div className="p-20 text-center font-black uppercase text-slate-300 tracking-widest">Lệnh không tồn tại</div>;
@@ -51,13 +51,61 @@ const OrderDetail: React.FC<Props> = ({ orders, onUpdate, onDelete, onAddReturn,
 
    const handleReturnSubmit = (e: React.FormEvent) => {
       e.preventDefault();
-      onAddReturn({
-         ...returnLog as ReturnLog,
+      
+      // Validation
+      if (!returnLog.color || returnLog.color.trim() === '') {
+         alert('Vui lòng chọn màu sản phẩm lỗi!');
+         return;
+      }
+      
+      const validSizes = Object.entries(returnSizes)
+         .filter(([size, qty]) => qty > 0)
+         .map(([size]) => Number(size));
+      
+      if (validSizes.length === 0) {
+         alert('Vui lòng nhập số lượng lỗi cho ít nhất một size!');
+         return;
+      }
+      
+      if (!returnLog.reason || returnLog.reason.trim() === '') {
+         alert('Vui lòng nhập lý do lỗi!');
+         return;
+      }
+      
+      // Tạo nhiều return log entries cho mỗi size
+      const returnLogs: ReturnLog[] = validSizes.map(size => ({
          id: generateId(),
          originalOrderId: order.id,
+         color: returnLog.color!,
+         size: size,
+         quantity: returnSizes[size],
+         reason: returnLog.reason!,
          date: new Date().toISOString()
-      });
+      }));
+      
+      // Sử dụng onAddReturns nếu có, ngược lại gọi onAddReturn từng cái
+      if (onAddReturns) {
+         onAddReturns(returnLogs);
+      } else {
+         returnLogs.forEach(ret => onAddReturn(ret));
+      }
+      
+      // Reset form
+      setReturnSizes({});
+      setReturnLog({ color: '', reason: '' });
       setShowReturnForm(false);
+   };
+   
+   const updateSizeQuantity = (size: number, quantity: number) => {
+      setReturnSizes(prev => {
+         const updated = { ...prev };
+         if (quantity > 0) {
+            updated[size] = quantity;
+         } else {
+            delete updated[size];
+         }
+         return updated;
+      });
    };
 
    const isAdmin = user.role === UserRole.ADMIN;
@@ -219,41 +267,52 @@ const OrderDetail: React.FC<Props> = ({ orders, onUpdate, onDelete, onAddReturn,
 
          {/* MODAL BÁO LỖI */}
          {showReturnForm && (
-            <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-[100] flex items-center justify-center p-6">
-               <form onSubmit={handleReturnSubmit} className="bg-white w-full max-w-xl rounded-[3rem] border-[6px] border-slate-950 shadow-2xl overflow-hidden">
-                  <div className="p-8 bg-slate-950 text-white flex justify-between items-center">
-                     <h3 className="text-xl font-black uppercase tracking-tight italic">Ghi nhận sản phẩm lỗi & Làm bù</h3>
-                     <button type="button" onClick={() => setShowReturnForm(false)} className="p-2 hover:bg-white/10 rounded-full"><X size={24} /></button>
+            <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-md z-[100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+               <form onSubmit={handleReturnSubmit} className="bg-white w-full max-w-xl rounded-2xl sm:rounded-[3rem] border-4 sm:border-[6px] border-slate-950 shadow-2xl overflow-hidden my-auto max-h-[95vh] flex flex-col">
+                  <div className="p-4 sm:p-6 md:p-8 bg-slate-950 text-white flex justify-between items-center flex-shrink-0">
+                     <h3 className="text-base sm:text-lg md:text-xl font-black uppercase tracking-tight italic">Ghi nhận sản phẩm lỗi & Làm bù</h3>
+                     <button type="button" onClick={() => setShowReturnForm(false)} className="p-2 hover:bg-white/10 rounded-full flex-shrink-0"><X size={20} className="sm:w-6 sm:h-6" /></button>
                   </div>
-                  <div className="p-10 space-y-6">
+                  <div className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6 overflow-y-auto flex-1">
                      <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Chọn phối màu lỗi</label>
-                        <select value={returnLog.color} onChange={e => setReturnLog(p => ({ ...p, color: e.target.value }))} className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black uppercase text-sm" required>
+                        <select value={returnLog.color} onChange={e => setReturnLog(p => ({ ...p, color: e.target.value }))} className="w-full p-3 sm:p-4 bg-slate-50 border-2 border-slate-200 rounded-xl sm:rounded-2xl font-black uppercase text-sm" required>
                            <option value="">-- Chọn màu --</option>
                            {order.details.map(d => <option key={d.id} value={d.color}>{d.color}</option>)}
                         </select>
                      </div>
-                     <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Size lỗi</label>
-                           <select value={returnLog.size} onChange={e => setReturnLog(p => ({ ...p, size: Number(e.target.value) }))} className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-lg">
-                              {activeSizeRange.map(s => <option key={s} value={s}>{s}</option>)}
-                           </select>
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Size lỗi & Số lượng</label>
+                        <div className="bg-slate-50 border-2 border-slate-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 max-h-[200px] sm:max-h-[250px] overflow-y-auto">
+                           <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                              {activeSizeRange.map(size => (
+                                 <div key={size} className="flex items-center gap-2 sm:gap-3">
+                                    <div className="flex-1">
+                                       <label className="text-xs font-black text-slate-600 uppercase">Size {size}</label>
+                                    </div>
+                                    <input 
+                                       type="number" 
+                                       min="0"
+                                       value={returnSizes[size] || ''} 
+                                       onChange={e => updateSizeQuantity(size, Number(e.target.value) || 0)} 
+                                       placeholder="0"
+                                       className="w-16 sm:w-20 p-1.5 sm:p-2 bg-white border-2 border-slate-300 rounded-lg sm:rounded-xl font-black text-base sm:text-lg text-blue-600 text-center focus:border-blue-500 focus:outline-none" 
+                                    />
+                                 </div>
+                              ))}
+                           </div>
                         </div>
-                        <div className="space-y-2">
-                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Số lượng lỗi</label>
-                           <input type="number" value={returnLog.quantity} onChange={e => setReturnLog(p => ({ ...p, quantity: Number(e.target.value) }))} className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-black text-3xl text-blue-600 text-center" />
-                        </div>
+                        <p className="text-[10px] text-slate-400 italic">Nhập số lượng lỗi cho từng size (để trống hoặc 0 nếu không có lỗi)</p>
                      </div>
                      <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Lý do lỗi (VD: Hở keo, rách da...)</label>
-                        <textarea value={returnLog.reason} onChange={e => setReturnLog(p => ({ ...p, reason: e.target.value }))} className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-bold min-h-[100px]" placeholder="..." required />
+                        <textarea value={returnLog.reason} onChange={e => setReturnLog(p => ({ ...p, reason: e.target.value }))} className="w-full p-3 sm:p-4 bg-slate-50 border-2 border-slate-200 rounded-xl sm:rounded-2xl font-bold min-h-[80px] sm:min-h-[100px] resize-none" placeholder="..." required />
                      </div>
                   </div>
-                  <div className="p-8 bg-slate-50 border-t-2 border-slate-100 flex justify-end gap-4">
-                     <button type="button" onClick={() => setShowReturnForm(false)} className="px-8 py-3 font-black text-xs uppercase tracking-widest text-slate-400">Hủy</button>
-                     <button type="submit" className="px-10 py-4 bg-rose-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl border-b-4 border-rose-800 flex items-center gap-2">
-                        <Save size={18} /> GHI NHẬN & TẠO LỆNH BÙ
+                  <div className="p-4 sm:p-6 md:p-8 bg-slate-50 border-t-2 border-slate-100 flex justify-end gap-3 sm:gap-4 flex-shrink-0">
+                     <button type="button" onClick={() => setShowReturnForm(false)} className="px-6 sm:px-8 py-2.5 sm:py-3 font-black text-xs uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors">Hủy</button>
+                     <button type="submit" className="px-8 sm:px-10 py-3 sm:py-4 bg-rose-600 text-white rounded-xl sm:rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl border-b-4 border-rose-800 flex items-center gap-2 hover:bg-rose-700 transition-colors">
+                        <Save size={16} className="sm:w-[18px] sm:h-[18px]" /> GHI NHẬN & TẠO LỆNH BÙ
                      </button>
                   </div>
                </form>

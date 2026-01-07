@@ -14,7 +14,16 @@ async function apiCall<T>(endpoint: string, options?: RequestInit): Promise<T> {
     });
 
     if (!response.ok) {
-        throw new Error(`API Error: ${response.statusText}`);
+        let errorMessage = `API Error: ${response.statusText}`;
+        try {
+            const errorData = await response.json();
+            if (errorData.error) {
+                errorMessage = errorData.error;
+            }
+        } catch (e) {
+            // If response is not JSON, use statusText
+        }
+        throw new Error(errorMessage);
     }
 
     return response.json();

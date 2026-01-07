@@ -209,7 +209,84 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error('Error adding return:', error);
-      alert('Lỗi khi thêm trả hàng!');
+      const errorMessage = error instanceof Error ? error.message : 'Lỗi không xác định';
+      alert(`Lỗi khi thêm trả hàng: ${errorMessage}`);
+    }
+  };
+
+  const addReturns = async (newReturns: ReturnLog[]) => {
+    if (newReturns.length === 0) return;
+    
+    try {
+      // Tạo tất cả return logs
+      const createdReturns: ReturnLog[] = [];
+      for (const newReturn of newReturns) {
+        await returnsAPI.create(newReturn);
+        createdReturns.push(newReturn);
+      }
+      setReturns(prev => [...createdReturns, ...prev]);
+
+      // Gộp các returns cùng màu và cùng lý do thành 1 lệnh bù
+      const originalOrder = orders.find(o => o.id === newReturns[0].originalOrderId);
+      if (!originalOrder) return;
+
+      // Nhóm theo màu và lý do
+      const groupedByColorAndReason: Record<string, ReturnLog[]> = {};
+      newReturns.forEach(ret => {
+        const key = `${ret.color}|${ret.reason}`;
+        if (!groupedByColorAndReason[key]) {
+          groupedByColorAndReason[key] = [];
+        }
+        groupedByColorAndReason[key].push(ret);
+      });
+
+      // Tạo lệnh bù cho mỗi nhóm
+      for (const [key, returns] of Object.entries(groupedByColorAndReason)) {
+        const [color, reason] = key.split('|');
+        const totalQuantity = returns.reduce((sum, r) => sum + r.quantity, 0);
+        
+        // Tạo object sizes từ tất cả returns trong nhóm
+        const sizesMap: Record<string, number> = {};
+        returns.forEach(ret => {
+          sizesMap[`size${ret.size}`] = ret.quantity;
+        });
+
+        const remakeOrder: ProductionOrder = {
+          ...originalOrder,
+          id: generateId(),
+          orderCode: `${originalOrder.orderCode}-BÙ`,
+          parentOrderId: originalOrder.id,
+          totalQuantity: totalQuantity,
+          priority: Priority.HIGH,
+          priorityReason: `Làm bù cho hàng lỗi: ${reason}`,
+          stages: INITIAL_STAGES,
+          details: originalOrder.details.map(d => {
+            if (d.color === color) {
+              // Tạo sizes object mới từ sizesMap, giữ nguyên cấu trúc của sizes gốc
+              const newSizes: any = {};
+              // Copy tất cả sizes từ detail gốc và set về 0
+              Object.keys(d.sizes).forEach(k => {
+                newSizes[k] = sizesMap[k] || 0;
+              });
+              // Thêm các size mới từ returns nếu chưa có trong detail gốc
+              Object.entries(sizesMap).forEach(([sizeKey, qty]) => {
+                if (!(sizeKey in newSizes)) {
+                  newSizes[sizeKey] = qty;
+                }
+              });
+              return { ...d, sizes: newSizes, total: totalQuantity };
+            }
+            return { ...d, total: 0, sizes: {} as any };
+          }).filter(d => d.total > 0),
+          createdAt: new Date().toISOString()
+        };
+        await ordersAPI.create(remakeOrder);
+        setOrders(prev => [remakeOrder, ...prev]);
+      }
+    } catch (error) {
+      console.error('Error adding returns:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Lỗi không xác định';
+      alert(`Lỗi khi thêm trả hàng: ${errorMessage}`);
     }
   };
 
@@ -509,7 +586,7 @@ const App: React.FC = () => {
               <Route path="/cancelled" element={currentUser.role === UserRole.ADMIN ? <OrderList orders={cancelledOrders} onReorder={() => { }} onDelete={deleteOrder} title="Thư mục đã hủy" user={currentUser} /> : <Navigate to="/orders" />} />
               <Route path="/create-order" element={currentUser.permissions.canEdit ? <OrderForm onSave={addOrder} customers={customers} models={models} orders={orders} /> : <Navigate to="/orders" />} />
               <Route path="/edit-order/:id" element={currentUser.permissions.canEdit ? <OrderForm onSave={updateOrder} customers={customers} models={models} orders={orders} /> : <Navigate to="/orders" />} />
-              <Route path="/order/:id" element={<OrderDetail orders={orders} onUpdate={updateOrder} onDelete={deleteOrder} onAddReturn={addReturn} user={currentUser} />} />
+              <Route path="/order/:id" element={<OrderDetail orders={orders} onUpdate={updateOrder} onDelete={deleteOrder} onAddReturn={addReturn} onAddReturns={addReturns} user={currentUser} />} />
               <Route path="/shipping" element={<ShippingManager orders={orders} shippingNotes={shippingNotes} onAdd={addShippingNote} onUpdate={updateShippingNote} onDelete={deleteShippingNote} user={currentUser} />} />
               <Route path="/returns" element={<ReturnManager returns={returns} orders={orders} />} />
               <Route path="/customers" element={<CustomerManager customers={customers} orders={orders} shippingNotes={shippingNotes} payments={payments} onAdd={addCustomer} onUpdate={updateCustomer} onAddPayment={addPayment} onDeletePayment={deletePayment} onReorderOrders={reorderOrders} user={currentUser} />} />

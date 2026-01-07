@@ -677,12 +677,52 @@ def get_returns_by_order(order_id):
 @app.route('/api/returns', methods=['POST'])
 def create_return():
     """Create a new return log"""
+    if not request.json:
+        return jsonify({'error': 'No data provided'}), 400
+    
     data = request.json
     conn = get_db_connection()
     if not conn:
         return jsonify({'error': 'Database connection failed'}), 500
     
     try:
+        # Validation
+        if 'id' not in data or not data['id']:
+            conn.close()
+            return jsonify({'error': 'Missing required field: id'}), 400
+        
+        original_order_id = data.get('originalOrderId') or data.get('orderId')
+        if not original_order_id:
+            conn.close()
+            return jsonify({'error': 'Missing required field: originalOrderId'}), 400
+        
+        color = data.get('color', '').strip()
+        if not color:
+            conn.close()
+            return jsonify({'error': 'Missing or empty required field: color'}), 400
+        
+        size = data.get('size', 0)
+        if not size or size <= 0:
+            conn.close()
+            return jsonify({'error': 'Invalid size: must be greater than 0'}), 400
+        
+        quantity = data.get('quantity', 0)
+        if not quantity or quantity <= 0:
+            conn.close()
+            return jsonify({'error': 'Invalid quantity: must be greater than 0'}), 400
+        
+        reason = data.get('reason', '').strip()
+        if not reason:
+            conn.close()
+            return jsonify({'error': 'Missing or empty required field: reason'}), 400
+        
+        date_value = data.get('date') or data.get('returnDate') or datetime.now()
+        if isinstance(date_value, str):
+            try:
+                date_value = datetime.fromisoformat(date_value.replace('Z', '+00:00'))
+            except:
+                date_value = datetime.now()
+        
         cursor = conn.cursor()
         query = """
             INSERT INTO return_logs (
@@ -690,16 +730,24 @@ def create_return():
             ) VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         values = (
-            data['id'], data.get('originalOrderId', data.get('orderId')),
-            data.get('color', ''), data.get('size', 0),
-            data['quantity'], data['reason'], data.get('date', data.get('returnDate', datetime.now()))
+            data['id'], original_order_id, color, size, quantity, reason, date_value
         )
         cursor.execute(query, values)
         conn.commit()
         cursor.close()
         conn.close()
         return jsonify({'message': 'Return log created successfully', 'id': data['id']}), 201
-    except Error as e:
+    except KeyError as e:
+        if conn:
+            conn.close()
+        return jsonify({'error': f'Missing required field: {str(e)}'}), 400
+    except Exception as e:
+        if conn:
+            try:
+                conn.rollback()
+            except:
+                pass
+            conn.close()
         return jsonify({'error': str(e)}), 500
 
 # ============ USERS ============
